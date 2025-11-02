@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'screens/home_screen.dart';
+import 'screens/login/login_screen.dart';
 
 List<CameraDescription>? cameras;
 
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'FaceID Attendance Demo',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: HomeScreen(cameras: cameras),
+      home: LoginScreen(),
     );
   }
 }
