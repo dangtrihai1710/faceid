@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/admin_service.dart';
 import 'registration_screen.dart';
 import 'home_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +39,32 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Check if admin login
+      if (_usernameController.text.trim() == 'admin' &&
+          _passwordController.text == 'admin123') {
+        // Initialize admin service if needed
+        await AdminService.initializeAdmin();
+
+        final adminResult = await AdminService.adminLogin(
+          _usernameController.text.trim(),
+          _passwordController.text,
+        );
+
+        if (adminResult != null && adminResult['success'] == true) {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => AdminDashboardScreen(
+                  adminUser: adminResult['user'],
+                ),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // Regular user login
       final authService = AuthService();
       final user = await authService.login(
         _usernameController.text.trim(),
@@ -48,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Navigate to home screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => HomeScreen(cameras: []),
+            builder: (context) => HomeScreen(currentUser: user),
           ),
         );
       }
@@ -272,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: GestureDetector(
                                       onTap: () {
@@ -310,6 +338,52 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 fontWeight: FontWeight.w500,
                                                 color: _selectedRole == 'instructor'
                                                     ? Colors.green[700]
+                                                    : Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedRole = 'admin';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: _selectedRole == 'admin'
+                                              ? Colors.red[100]
+                                              : Colors.grey[100],
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: _selectedRole == 'admin'
+                                                ? Colors.red[700]!
+                                                : Colors.grey[300]!,
+                                            width: _selectedRole == 'admin' ? 2 : 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.admin_panel_settings,
+                                              size: 32,
+                                              color: _selectedRole == 'admin'
+                                                  ? Colors.red[700]
+                                                  : Colors.grey[600],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Admin',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                color: _selectedRole == 'admin'
+                                                    ? Colors.red[700]
                                                     : Colors.grey[600],
                                               ),
                                             ),
@@ -473,6 +547,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         )).toList(),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              Icon(Icons.admin_panel_settings,
+                                   color: Colors.red[600], size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                'admin: admin123',
+                                style: TextStyle(
+                                  color: Colors.red[600],
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

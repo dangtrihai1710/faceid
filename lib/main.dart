@@ -139,7 +139,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     // If user is logged in, show home screen, otherwise show login screen
     return _currentUser != null
-        ? HomeScreen(cameras: cameras)
+        ? HomeScreen(cameras: cameras, currentUser: _currentUser)
         : const LoginScreen();
   }
 }

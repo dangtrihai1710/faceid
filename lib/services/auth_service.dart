@@ -257,4 +257,41 @@ class AuthService {
   static Map<String, String> getDemoAccounts() {
     return _demoAccounts;
   }
+
+  // Save user credentials for admin functionality
+  static Future<void> saveUserCredentials(String username, String password, String role) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usersJson = prefs.getString(_usersKey) ?? '[]';
+      final users = jsonDecode(usersJson) as List;
+
+      // Check if user already exists
+      final existingUserIndex = users.indexWhere(
+        (user) => user['username'] == username,
+      );
+
+      final userData = {
+        'id': existingUserIndex >= 0 ? users[existingUserIndex]['id'] : DateTime.now().millisecondsSinceEpoch.toString(),
+        'username': username,
+        'password': _hashPassword(password),
+        'role': role,
+        'createdAt': existingUserIndex >= 0
+            ? users[existingUserIndex]['createdAt']
+            : DateTime.now().toIso8601String(),
+        'email': '$username@demo.com',
+        'fullName': username == 'admin' ? 'Admin User' : '${username}_user',
+      };
+
+      if (existingUserIndex >= 0) {
+        users[existingUserIndex] = userData;
+      } else {
+        users.add(userData);
+      }
+
+      await prefs.setString(_usersKey, jsonEncode(users));
+      print('✅ User credentials saved for: $username');
+    } catch (e) {
+      print('❌ Error saving user credentials: $e');
+    }
+  }
 }

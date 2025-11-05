@@ -298,6 +298,23 @@ class ClassService {
     }
   }
 
+  // Get all attendance records (for instructors/reports)
+  static Future<List<AttendanceModel>> getAllAttendanceRecords() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final attendanceJson = prefs.getString(_attendanceKey) ?? '[]';
+      final List<dynamic> attendanceList = jsonDecode(attendanceJson);
+
+      return attendanceList
+          .map((json) => AttendanceModel.fromJson(json))
+          .toList()
+        ..sort((a, b) => b.checkInTime.compareTo(a.checkInTime));
+    } catch (e) {
+      print('Error getting all attendance records: $e');
+      return [];
+    }
+  }
+
   // Get class by ID
   static Future<ClassModel?> getClassById(String classId) async {
     try {

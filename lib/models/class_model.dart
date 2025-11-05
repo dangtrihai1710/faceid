@@ -11,6 +11,12 @@ class ClassModel {
   final DateTime? attendanceOpenTime;
   final DateTime? attendanceCloseTime;
 
+  // Additional fields for admin compatibility
+  final String? instructorName;
+  final int? studentCount;
+  final int? attendanceCount;
+  final String? status;
+
   ClassModel({
     required this.id,
     required this.name,
@@ -23,6 +29,10 @@ class ClassModel {
     this.isAttendanceOpen = false,
     this.attendanceOpenTime,
     this.attendanceCloseTime,
+    this.instructorName,
+    this.studentCount,
+    this.attendanceCount,
+    this.status,
   });
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +52,10 @@ class ClassModel {
       attendanceCloseTime: json['attendanceCloseTime'] != null
           ? DateTime.tryParse(json['attendanceCloseTime'].toString())
           : null,
+      instructorName: json['instructorName']?.toString(),
+      studentCount: json['studentCount'] as int?,
+      attendanceCount: json['attendanceCount'] as int?,
+      status: json['status']?.toString(),
     );
   }
 
@@ -58,6 +72,10 @@ class ClassModel {
       'isAttendanceOpen': isAttendanceOpen,
       'attendanceOpenTime': attendanceOpenTime?.toIso8601String(),
       'attendanceCloseTime': attendanceCloseTime?.toIso8601String(),
+      'instructorName': instructorName,
+      'studentCount': studentCount,
+      'attendanceCount': attendanceCount,
+      'status': status,
     };
   }
 
@@ -125,6 +143,10 @@ class ClassModel {
     bool? isAttendanceOpen,
     DateTime? attendanceOpenTime,
     DateTime? attendanceCloseTime,
+    String? instructorName,
+    int? studentCount,
+    int? attendanceCount,
+    String? status,
   }) {
     return ClassModel(
       id: id ?? this.id,
@@ -138,12 +160,22 @@ class ClassModel {
       isAttendanceOpen: isAttendanceOpen ?? this.isAttendanceOpen,
       attendanceOpenTime: attendanceOpenTime ?? this.attendanceOpenTime,
       attendanceCloseTime: attendanceCloseTime ?? this.attendanceCloseTime,
+      instructorName: instructorName ?? this.instructorName,
+      studentCount: studentCount ?? this.studentCount,
+      attendanceCount: attendanceCount ?? this.attendanceCount,
+      status: status ?? this.status,
     );
   }
 
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
+
+  // Additional getters for admin compatibility
+  String get displayInstructorName => instructorName ?? instructor;
+  int get displayStudentCount => studentCount ?? 0;
+  int get displayAttendanceCount => attendanceCount ?? 0;
+  String get displayStatus => status ?? (isCompleted ? 'completed' : isOngoing ? 'ongoing' : 'upcoming');
 
   @override
   String toString() {
