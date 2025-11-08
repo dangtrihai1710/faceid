@@ -67,15 +67,36 @@ class AuthService {
   }
 
   // Logout
-  Future<void> logout() async {
+  Future<ApiResponse<String>> logout() async {
     try {
+      // Call logout API first
+      final response = await _apiClient.post<String>(
+        ApiConfig.logoutEndpoint,
+      );
+
+      // Clear local data regardless of API response
       _currentUser = null;
       _accessToken = null;
       _apiClient.clearAuth();
       await _clearStoredAuthData();
-      debugPrint('Logout successful');
+
+      if (response.success) {
+        debugPrint('Logout successful');
+      } else {
+        debugPrint('Logout API failed but local data cleared');
+      }
+
+      return response.success
+          ? ApiResponse.success('Logout successful', message: 'Logout successful')
+          : ApiResponse.error('Logout completed locally');
     } catch (e) {
       debugPrint('Logout error: $e');
+      // Still clear local data on error
+      _currentUser = null;
+      _accessToken = null;
+      _apiClient.clearAuth();
+      await _clearStoredAuthData();
+      return ApiResponse.error('Logout completed with errors: $e');
     }
   }
 

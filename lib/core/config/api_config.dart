@@ -21,6 +21,7 @@ class ApiConfig {
 
   // Specific endpoints
   static String get loginEndpoint => '$authEndpoint/login';
+  static String get logoutEndpoint => '$authEndpoint/logout';
   static String get refreshTokenEndpoint => '$authEndpoint/refresh';
   static String get meEndpoint => '$authEndpoint/me';
   static String get changePasswordEndpoint => '$authEndpoint/change-password';
@@ -29,6 +30,7 @@ class ApiConfig {
   static String get recognizeFaceEndpoint => '$attendanceEndpoint/recognize-face';
   static String get qrAttendanceEndpoint => '$attendanceEndpoint/qr';
   static String get codeAttendanceEndpoint => '$attendanceEndpoint/code';
+  static String get attendanceHistoryEndpoint => '$attendanceEndpoint/history';
 
   static String get healthEndpoint => '$baseUrl/health';
   static String get adminHealthEndpoint => '$adminEndpoint/health';

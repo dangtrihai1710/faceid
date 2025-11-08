@@ -5,8 +5,11 @@ import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../core/widgets/info_card.dart';
 import '../../screens/widgets/class_card.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/models/user_models.dart' as user_models;
+import '../../core/models/class_models.dart';
 import '../../mock/mock_data.dart';
-import '../../mock/mock_models.dart';
+import '../../mock/mock_models.dart' as mock;
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -16,9 +19,9 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-  late User _currentUser;
-  late List<ClassModel> _todayClasses;
-  late AttendanceStats _stats;
+  late user_models.User _currentUser;
+  late List<Class> _todayClasses;
+  late user_models.AttendanceStats _stats;
   int _selectedIndex = 0;
 
   @override
@@ -29,18 +32,53 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   void _loadUserData() {
     setState(() {
-      _currentUser = MockData.getCurrentUser('student');
-      _todayClasses = MockData.getTodayClasses('student');
-      _stats = MockData.studentStats;
+      // Use mock data temporarily until fully integrated with API
+      final mockUser = MockData.getCurrentUser('student');
+      _currentUser = user_models.User(
+        id: mockUser.id,
+        userCode: mockUser.id,
+        fullName: mockUser.name,
+        email: mockUser.email,
+        role: mockUser.role,
+        department: mockUser.department,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      _todayClasses = MockData.getTodayClasses('student').map((mockClass) => Class(
+        id: mockClass.id,
+        name: mockClass.subject,
+        code: mockClass.id, // Use ID as code for now
+        description: null,
+        instructorId: mockClass.teacher,
+        instructorName: mockClass.teacher,
+        schedule: mockClass.time,
+        room: mockClass.room,
+        enrolledStudents: const [],
+        maxStudents: 30,
+        isActive: true,
+        startDate: DateTime.now(),
+        endDate: DateTime.now().add(const Duration(days: 120)),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      )).toList();
+
+      _stats = user_models.AttendanceStats(
+        totalClasses: MockData.studentStats.totalClasses,
+        attendedClasses: MockData.studentStats.attendedClasses,
+        missedClasses: MockData.studentStats.missedClasses,
+        lateClasses: MockData.studentStats.lateClasses,
+        attendanceRate: MockData.studentStats.attendanceRate,
+      );
     });
   }
 
-  ClassModel? get _currentClass {
+  Class? get _currentClass {
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
 
     for (var classItem in _todayClasses) {
-      final times = classItem.time.split(' - ');
+      final times = classItem.schedule.split(' - ');
       if (times.length == 2) {
         final startTimeParts = times[0].split(':');
         final endTimeParts = times[1].split(':');
@@ -83,7 +121,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Xin chào, ${_currentUser.name.split(' ').last} 👋',
+              'Xin chào, ${_currentUser.fullName.split(' ').last} 👋',
               style: AppTextStyles.heading3.copyWith(
                 color: AppColors.onBackground,
               ),
@@ -127,7 +165,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildHomeView(ClassModel? currentClass) {
+  Widget _buildHomeView(Class? currentClass) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -178,7 +216,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               ),
                             ),
                             Text(
-                              currentClass.subject,
+                              currentClass.name,
                               style: AppTextStyles.heading3.copyWith(
                                 color: AppColors.onPrimary,
                                 fontWeight: FontWeight.bold,
@@ -199,7 +237,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       const SizedBox(width: 12),
                       _buildInfoChip(
                         Icons.access_time,
-                        currentClass.time,
+                        currentClass.schedule,
                       ),
                     ],
                   ),
@@ -339,10 +377,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             )
           else
             ..._todayClasses.map((classItem) => ClassCard(
-              classItem: classItem,
+              classItem: mock.ClassModel(
+                id: classItem.id,
+                subject: classItem.name,
+                time: classItem.schedule,
+                room: classItem.room,
+                status: 'upcoming', // Default status
+                teacher: classItem.instructorName,
+                students: const ['Student 1', 'Student 2'],
+                day: 'Thứ Hai',
+              ),
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Chi tiết: ${classItem.subject}')),
+                  SnackBar(content: Text('Chi tiết: ${classItem.name}')),
                 );
               },
             )),
@@ -498,13 +545,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             radius: 60,
             backgroundColor: AppColors.primary,
             child: Text(
-              _currentUser.avatar,
-              style: const TextStyle(fontSize: 60),
+              _currentUser.fullName.split(' ').map((word) => word[0]).take(2).join().toUpperCase(),
+              style: const TextStyle(fontSize: 60, color: AppColors.onPrimary),
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            _currentUser.name,
+            _currentUser.fullName,
             style: AppTextStyles.heading2,
           ),
           const SizedBox(height: 8),
@@ -546,8 +593,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           const SizedBox(height: 32),
           PrimaryButton(
             text: 'Đăng xuất',
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/login');
+            onPressed: () async {
+              // Show loading indicator
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đang đăng xuất...')),
+              );
+
+              // Call logout API
+              final authService = AuthService();
+              await authService.logout();
+
+              // Check if widget is still mounted before navigating
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
             },
             backgroundColor: AppColors.error,
           ),

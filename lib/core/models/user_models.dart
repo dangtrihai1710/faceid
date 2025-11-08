@@ -253,3 +253,28 @@ class DemoAccount extends Equatable {
   @override
   List<Object?> get props => [userCode, password, role, fullName, description];
 }
+
+class AttendanceStats extends Equatable {
+  final int totalClasses;
+  final int attendedClasses;
+  final int missedClasses;
+  final int lateClasses;
+  final double attendanceRate;
+
+  const AttendanceStats({
+    required this.totalClasses,
+    required this.attendedClasses,
+    required this.missedClasses,
+    required this.lateClasses,
+    required this.attendanceRate,
+  });
+
+  @override
+  List<Object?> get props => [
+        totalClasses,
+        attendedClasses,
+        missedClasses,
+        lateClasses,
+        attendanceRate,
+      ];
+}
