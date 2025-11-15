@@ -483,6 +483,60 @@ class _LoginScreenApiState extends State<LoginScreenApi>
 
                   const SizedBox(height: 20),
 
+                  // Register buttons
+                  SlideTransition(
+                    position: _slideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Chưa có tài khoản? ',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/smart_register');
+                                },
+                                child: Text(
+                                  'Đăng ký thông minh',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/register');
+                                },
+                                child: Text(
+                                  'Đăng ký thủ công',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   // Demo buttons
                   if (_demoAccounts.isNotEmpty)
                     SlideTransition(

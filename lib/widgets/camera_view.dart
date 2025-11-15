@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_text_styles.dart';
-import '../core/widgets/primary_button.dart';
-import '../core/widgets/mock_camera_preview.dart';
+import '../core/widgets/real_camera_preview.dart';
+import '../core/services/camera_service.dart';
+import '../core/services/api_service.dart';
+import '../core/services/location_service.dart';
 
 class CameraView extends StatefulWidget {
   final dynamic classItem; // Can be null for student, ClassModel for teacher
@@ -18,9 +21,10 @@ class CameraView extends StatefulWidget {
 
 class _CameraViewState extends State<CameraView>
     with TickerProviderStateMixin {
-  bool _isScanning = false;
   bool _isProcessing = false;
-  int _scanningProgress = 0;
+  bool _hasPermissions = false;
+  bool _permissionsChecked = false;
+  Map<String, dynamic>? _currentLocation;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -39,52 +43,115 @@ class _CameraViewState extends State<CameraView>
     );
 
     _fadeController.forward();
+    _checkPermissions();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    CameraService.dispose();
     super.dispose();
   }
 
-  Future<void> _startScanning() async {
-    setState(() {
-      _isScanning = true;
-      _scanningProgress = 0;
-    });
+  Future<void> _checkPermissions() async {
+    try {
+      // Check camera permission
+      final cameraPermission = await Permission.camera.request();
+      // Check location permission
+      final locationPermission = await Permission.location.request();
 
-    // Simulate scanning progress
-    for (int i = 0; i <= 100; i += 10) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) {
-        setState(() {
-          _scanningProgress = i;
-        });
+      setState(() {
+        _hasPermissions = cameraPermission.isGranted && locationPermission.isGranted;
+        _permissionsChecked = true;
+      });
+
+      if (_hasPermissions) {
+        _getCurrentLocation();
       }
+    } catch (e) {
+      debugPrint('Error checking permissions: $e');
+      setState(() {
+        _permissionsChecked = true;
+      });
     }
+  }
 
-    setState(() {
-      _isScanning = false;
-      _isProcessing = true;
-    });
+  Future<void> _getCurrentLocation() async {
+    try {
+      final location = await LocationService.getCurrentLocation();
+      setState(() {
+        _currentLocation = location;
+      });
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
+  }
 
-    // Simulate processing delay
-    await Future.delayed(const Duration(seconds: 1));
+  
+  Future<void> _processFaceRecognition(String imagePath) async {
+    try {
+      setState(() {
+        _isProcessing = true;
+      });
 
-    // Random success/failure (70% success rate)
-    final isSuccess = DateTime.now().millisecond % 10 < 7;
+      // Get current location if not available
+      if (_currentLocation == null) {
+        await _getCurrentLocation();
+      }
 
-    if (mounted) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/result',
-        arguments: {
-          'success': isSuccess,
-          'timestamp': DateTime.now(),
-          'classItem': widget.classItem,
-        },
+      // Simulate processing delay
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Call API for face recognition
+      // Note: You'll need to pass actual classId and userId from your app state
+      final result = await ApiService.uploadImageForFaceRecognition(
+        imagePath: imagePath,
+        classId: widget.classItem?['id'] ?? 'demo_class_id', // Replace with actual class ID
+        userId: 'demo_user_id', // Replace with actual user ID from login
+        gpsData: _currentLocation,
+        deviceId: 'flutter_device',
       );
+
+      final isSuccess = result != null && result.contains('successful');
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/result',
+          arguments: {
+            'success': isSuccess,
+            'timestamp': DateTime.now(),
+            'classItem': widget.classItem,
+            'message': result ?? 'Điểm danh thành công!',
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('Face recognition error: $e');
+      if (mounted) {
+        _showErrorDialog('Lỗi nhận diện khuôn mặt: $e');
+      }
+    } finally {
+      setState(() {
+        _isProcessing = false;
+      });
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Lỗi'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
   }
 
   
@@ -120,86 +187,113 @@ class _CameraViewState extends State<CameraView>
                   children: [
                     const SizedBox(height: 20),
 
-                    // Instructions
-                    if (!_isScanning && !_isProcessing) ...[
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.info.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.info.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: AppColors.info,
-                              size: 20,
+                    // Instructions or permissions warning
+                    if (!_isProcessing) ...[
+                      if (!_permissionsChecked)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.3),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Vui lòng đặt khuôn mặt của bạn vào khung và giữ yên trong 3 giây',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.info,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.sync,
+                                color: AppColors.warning,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Đang kiểm tra quyền truy cập...',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.warning,
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        )
+                      else if (!_hasPermissions)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.3),
                             ),
-                          ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: AppColors.error,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Vui lòng cấp quyền truy cập camera và vị trí để sử dụng tính năng này',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.info.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.info.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: AppColors.info,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Vui lòng đặt khuôn mặt của bạn vào khung và chụp ảnh',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.info,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 32),
                     ],
 
-                    // Mock Camera Preview
+                    // Real Camera Preview
                     Expanded(
                       child: Center(
-                        child: MockCameraPreview(
-                          isScanning: _isScanning,
+                        child: RealCameraPreview(
+                          isScanning: _isProcessing,
                           height: MediaQuery.of(context).size.height * 0.5,
+                          onImageCaptured: _hasPermissions ? _processFaceRecognition : null,
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
-                    // Scanning Status
-                    if (_isScanning) ...[
-                      Text(
-                        'Đang quét khuôn mặt...',
-                        style: AppTextStyles.heading4.copyWith(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        width: double.infinity,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: AppColors.divider,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: _scanningProgress / 100,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$_scanningProgress%',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ] else if (_isProcessing) ...[
+                    // Processing Status
+                    if (_isProcessing) ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -282,12 +376,7 @@ class _CameraViewState extends State<CameraView>
                         const SizedBox(height: 24),
                       ],
 
-                      // Action Buttons
-                      PrimaryButton(
-                        text: 'Bắt đầu quét',
-                        onPressed: _startScanning,
-                      ),
-                      const SizedBox(height: 12),
+                      // Cancel Button
                       SizedBox(
                         width: double.infinity,
                         child: TextButton(
@@ -305,6 +394,34 @@ class _CameraViewState extends State<CameraView>
                           ),
                         ),
                       ),
+
+                      // Location status
+                      if (_currentLocation != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: AppColors.success,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Đã xác định vị trí',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
 
                     const SizedBox(height: 20),
