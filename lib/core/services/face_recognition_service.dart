@@ -1,9 +1,8 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/api_response.dart';
 import '../models/class_models.dart';
-import 'test_data_service.dart';
+import 'api_service.dart';
 
 // Rect helper class
 class FaceRect {
@@ -101,17 +100,31 @@ class FaceRecognitionService {
         );
       }
 
-      // For testing, simulate face detection
-      if (kDebugMode) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        final testResult = _simulateFaceDetection();
-        return testResult;
-      }
+      // For now, return a simple face detection result
+      // In production, this would use a real face detection API
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Real API call would go here for production
-      // For now, simulate the response
-      final testResult = _simulateFaceDetection();
-      return testResult;
+      // Return a simple success result for face detection
+      return FaceDetectionResult(
+        success: true,
+        faces: [
+          Face(
+            id: 1,
+            boundingBox: FaceRect(100, 100, 200, 250),
+            confidence: 0.9,
+            landmarks: {
+              'left_eye': [150.0, 150.0],
+              'right_eye': [250.0, 150.0],
+              'nose': [200.0, 200.0],
+              'mouth': [200.0, 250.0],
+            },
+          )
+        ],
+        metadata: {
+          'processing_time': '500ms',
+          'image_quality': 'good',
+        },
+      );
     } catch (e) {
       debugPrint('Face detection error: $e');
       return FaceDetectionResult(
@@ -136,10 +149,43 @@ class FaceRecognitionService {
         );
       }
 
-      // For testing, always use simulation
-      await Future.delayed(const Duration(milliseconds: 800));
-      final testResult = _simulateFaceRecognition(classId);
-      return testResult;
+      // Use real API for face recognition
+      final result = await ApiService.uploadImageForFaceRecognition(
+        imagePath: imageFile.path,
+        classId: classId ?? '',
+        userId: 'face_recognition_scan', // Temporary user ID for scanning
+        confidenceThreshold: 0.85,
+      );
+
+      if (result != null && result.contains('successful')) {
+        // Parse the successful response
+        return FaceRecognitionResult(
+          success: true,
+          studentId: 'recognized_student',
+          studentName: 'Recognized Student',
+          confidence: 0.9, // Default confidence when API says successful
+          metadata: {
+            'threshold': 0.85,
+            'recognition_method': 'face_id',
+            'class_id': classId,
+            'timestamp': DateTime.now().toIso8601String(),
+            'api_response': result,
+          },
+        );
+      } else {
+        // Face recognition failed - return failure with API message
+        return FaceRecognitionResult(
+          success: false,
+          errorMessage: result ?? 'Face recognition failed',
+          metadata: {
+            'threshold': 0.85,
+            'recognition_method': 'face_id',
+            'class_id': classId,
+            'timestamp': DateTime.now().toIso8601String(),
+            'api_response': result,
+          },
+        );
+      }
     } catch (e) {
       debugPrint('Face recognition error: $e');
       return FaceRecognitionResult(
@@ -154,22 +200,30 @@ class FaceRecognitionService {
     File imageFile,
     String studentId, {
     String? classId,
+    String? fullName,
+    String? email,
   }) async {
     try {
       if (!await imageFile.exists()) {
         return ApiResponse.error('Image file does not exist');
       }
 
-      // For testing, always simulate face registration
-      await Future.delayed(const Duration(seconds: 1));
-      return ApiResponse.success({
-        'success': true,
-        'message': 'Face registered successfully',
-        'student_id': studentId,
-        'face_id': 'face_${DateTime.now().millisecondsSinceEpoch}',
-        'threshold': 0.85,
-        'processing_time_ms': 450,
-      });
+      // Use real API for face registration
+      final result = await ApiService.registerFaceForUser(
+        imagePath: imageFile.path,
+        userId: studentId,
+        classId: classId ?? '',
+        fullName: fullName ?? 'Student',
+        email: email,
+        confidenceThreshold: 0.85,
+      );
+
+      if (result != null && result['success'] == true) {
+        return ApiResponse.success(result);
+      } else {
+        final message = result?['message'] ?? 'Face registration failed';
+        return ApiResponse.error(message);
+      }
     } catch (e) {
       debugPrint('Face registration error: $e');
       return ApiResponse.error('Error: $e');
@@ -181,6 +235,8 @@ class FaceRecognitionService {
     List<File> imageFiles,
     String studentId, {
     String? classId,
+    String? fullName,
+    String? email,
     double confidenceThreshold = 0.85,
   }) async {
     try {
@@ -195,47 +251,25 @@ class FaceRecognitionService {
         }
       }
 
-      // For testing, simulate batch face registration
-      await Future.delayed(const Duration(seconds: 2));
+      // Convert File objects to String paths
+      final List<String> imagePaths = imageFiles.map((file) => file.path).toList();
 
-      // Simulate face quality validation for all images
-      final validImages = <String>[];
-      final failedImages = <String>[];
+      // Use real API for multiple face registration
+      final result = await ApiService.uploadMultipleFaceImages(
+        imagePaths: imagePaths,
+        userId: studentId,
+        classId: classId ?? '',
+        fullName: fullName ?? 'Student',
+        email: email,
+        confidenceThreshold: confidenceThreshold,
+      );
 
-      for (int i = 0; i < imageFiles.length; i++) {
-        final validation = await validateFaceImage(imageFiles[i]);
-        if (validation) {
-          validImages.add('face_${studentId}_${i + 1}');
-        } else {
-          failedImages.add('image_${i + 1}');
-        }
+      if (result != null && result['success'] == true) {
+        return ApiResponse.success(result);
+      } else {
+        final message = result?['message'] ?? 'Multiple face registration failed';
+        return ApiResponse.error(message);
       }
-
-      if (validImages.isEmpty) {
-        return ApiResponse.error('No valid face images found. Please ensure all images clearly show your face.');
-      }
-
-      // Calculate overall quality score
-      final qualityScore = validImages.length / imageFiles.length;
-      final registrationSuccess = qualityScore >= 0.8; // At least 80% of images must be valid
-
-      return ApiResponse.success({
-        'success': registrationSuccess,
-        'message': registrationSuccess
-            ? 'Đăng ký khuôn mặt thành công! Đã lưu ${validImages.length}/5 ảnh lên hệ thống.'
-            : 'Đăng ký khuôn mặt chưa thành công. Chỉ ${validImages.length}/5 ảnh đạt chất lượng. Vui lòng chụp lại.',
-        'student_id': studentId,
-        'class_id': classId,
-        'valid_images': validImages,
-        'failed_images': failedImages,
-        'total_uploaded': imageFiles.length,
-        'quality_score': qualityScore,
-        'threshold_met': qualityScore >= 0.8,
-        'face_ids': validImages,
-        'processing_time_ms': 1200,
-        'mongodb_saved': registrationSuccess, // Indicates if saved to MongoDB Atlas
-        'registration_confidence': qualityScore,
-      });
     } catch (e) {
       debugPrint('Batch face registration error: $e');
       return ApiResponse.error('Lỗi đăng ký khuôn mặt: $e');
@@ -270,119 +304,7 @@ class FaceRecognitionService {
   }
 
   // Simulate face detection for testing
-  FaceDetectionResult _simulateFaceDetection() {
-    final random = Random();
-    final success = random.nextDouble() > 0.1; // 90% success rate
-
-    if (success) {
-      // Generate random face bounding box
-      final faces = [
-        Face(
-          id: 1,
-          boundingBox: FaceRect(
-            50 + random.nextDouble() * 100,
-            50 + random.nextDouble() * 100,
-            100 + random.nextDouble() * 50,
-            120 + random.nextDouble() * 50,
-          ),
-          confidence: 0.8 + random.nextDouble() * 0.19,
-          landmarks: {
-            'left_eye': [150.0, 120.0],
-            'right_eye': [180.0, 120.0],
-            'nose': [165.0, 140.0],
-            'mouth': [165.0, 160.0],
-          },
-        )
-      ];
-
-      return FaceDetectionResult(
-        success: true,
-        faces: faces,
-        metadata: {
-          'processing_time': '${(random.nextDouble() * 500).toStringAsFixed(0)}ms',
-          'image_quality': 'high',
-        },
-      );
-    } else {
-      return FaceDetectionResult(
-        success: false,
-        faces: [],
-        errorMessage: random.nextBool()
-            ? 'No face detected in image'
-            : 'Face too small or blurry',
-      );
-    }
-  }
-
-  // Simulate face recognition for testing with 85% threshold
-  FaceRecognitionResult _simulateFaceRecognition(String? classId) {
-    final random = Random();
-
-    // Get students for this class
-    List<Map<String, dynamic>> students = [];
-    if (classId != null) {
-      students = TestDataService.getStudentsInClass(classId);
-    }
-    if (students.isEmpty) {
-      students = TestDataService.getTestStudents();
-    }
-
-    if (students.isNotEmpty) {
-      final student = students[random.nextInt(students.length)];
-
-      // Simulate face recognition with confidence scoring
-      final baseConfidence = 0.75 + random.nextDouble() * 0.24; // 75-99% base confidence
-      final threshold = 0.85; // 85% threshold for successful recognition
-
-      // Add some variance to simulate real-world conditions
-      final finalConfidence = baseConfidence;
-      final success = finalConfidence >= threshold;
-
-      if (success) {
-        return FaceRecognitionResult(
-          success: true,
-          studentId: student['id'],
-          studentName: student['name'],
-          confidence: finalConfidence,
-          metadata: {
-            'threshold': threshold,
-            'recognition_method': 'face_id',
-            'class_id': classId,
-            'timestamp': DateTime.now().toIso8601String(),
-            'recognition_time': '${(random.nextDouble() * 300).toStringAsFixed(0)}ms',
-            'model_version': '2.1.0',
-            'quality_score': finalConfidence,
-          },
-        );
-      } else {
-        return FaceRecognitionResult(
-          success: false,
-          errorMessage: 'Nhận diện thất bại: Độ chính xác ${(finalConfidence * 100).toStringAsFixed(1)}% < ngưỡng ${(threshold * 100).toStringAsFixed(0)}%',
-          confidence: finalConfidence,
-          metadata: {
-            'threshold': threshold,
-            'recognition_method': 'face_id',
-            'class_id': classId,
-            'timestamp': DateTime.now().toIso8601String(),
-            'recognition_time': '${(random.nextDouble() * 300).toStringAsFixed(0)}ms',
-            'reason': 'confidence_below_threshold',
-            'quality_score': finalConfidence,
-          },
-        );
-      }
-    }
-
-    return FaceRecognitionResult(
-      success: false,
-      errorMessage: 'Không tìm thấy dữ liệu sinh viên cho lớp học này',
-      metadata: {
-        'threshold': 0.85,
-        'class_id': classId,
-        'reason': 'no_students_found',
-      },
-    );
-  }
-
+  
   // Get face recognition statistics
   Future<Map<String, dynamic>> getRecognitionStats() async {
     try {
