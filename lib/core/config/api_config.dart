@@ -1,7 +1,7 @@
 class ApiConfig {
   // Server configuration
   // Use your actual IP address when running on mobile device/emulator
-  static const String baseUrl = 'http://192.168.100.142:8002'; // For Android emulator
+  static const String baseUrl = 'http://192.168.100.142:8000'; // For Android emulator
   // static const String baseUrl = 'http://127.0.0.1:8000'; // For same machine testing
   static const String apiVersion = 'api/v1';
 

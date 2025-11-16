@@ -5,7 +5,7 @@ import 'dart:io';
 
 class ApiService {
   static late Dio _dio;
-  static const String _baseUrl = 'http://192.168.100.142:8002'; // Updated backend URL
+  static const String _baseUrl = 'http://192.168.100.142:8000'; // Updated backend URL
 
   static void _initialize() {
     _dio = Dio(BaseOptions(
@@ -65,6 +65,152 @@ class ApiService {
       deviceId: deviceId,
       confidenceThreshold: confidenceThreshold,
     );
+  }
+
+  static Future<Map<String, dynamic>?> registerFaceForUser({
+    required String imagePath,
+    required String userId,
+    required String classId,
+    required String fullName,
+    String? email,
+    String? phone,
+    Map<String, dynamic>? gpsData,
+    String? deviceId,
+    double confidenceThreshold = 0.85,
+  }) async {
+    _initialize();
+    try {
+      // Read image file and convert to base64
+      final imageFile = File(imagePath);
+      final imageBytes = await imageFile.readAsBytes();
+      final base64Image = base64Encode(imageBytes);
+
+      final requestData = {
+        'image_data': base64Image,
+        'user_id': userId,
+        'class_id': classId,
+        'full_name': fullName,
+        'confidence_threshold': confidenceThreshold,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        'gps_data': gpsData,
+        'device_id': deviceId ?? 'unknown',
+        'registration_type': 'face_id',
+        'location_validation_required': true,
+      };
+
+      final response = await _dio.post(
+        '/api/v1/attendance/register-face',
+        data: requestData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> uploadMultipleFaceImages({
+    required List<String> imagePaths,
+    required String userId,
+    required String classId,
+    required String fullName,
+    String? email,
+    String? phone,
+    Map<String, dynamic>? gpsData,
+    String? deviceId,
+    double confidenceThreshold = 0.85,
+  }) async {
+    _initialize();
+    try {
+      final List<Map<String, String>> imageData = [];
+
+      for (String imagePath in imagePaths) {
+        final imageFile = File(imagePath);
+        final imageBytes = await imageFile.readAsBytes();
+        final base64Image = base64Encode(imageBytes);
+
+        imageData.add({
+          'image_data': base64Image,
+          'image_name': 'face_${imageData.length + 1}.jpg',
+        });
+      }
+
+      final requestData = {
+        'images': imageData,
+        'user_id': userId,
+        'class_id': classId,
+        'full_name': fullName,
+        'confidence_threshold': confidenceThreshold,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        'gps_data': gpsData,
+        'device_id': deviceId ?? 'unknown',
+        'registration_type': 'face_id_multiple',
+        'location_validation_required': true,
+      };
+
+      final response = await _dio.post(
+        '/api/v1/attendance/register-faces-multiple',
+        data: requestData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
   }
 
   static Future<String?> _performFaceRecognitionUpload({
@@ -204,11 +350,14 @@ class ApiService {
       final prefix = role == 'student' ? 'SV' : 'GV';
       final autoUserId = '$prefix$timestamp';
 
+      // Truncate password if longer than 50 characters
+      final truncatedPassword = password.length > 50 ? password.substring(0, 50) : password;
+
       final requestData = {
         'user_id': autoUserId,
         'email': email,
         'full_name': fullName,
-        'password': password,
+        'password': truncatedPassword,
         'role': role,
         if (phone != null) 'phone': phone,
       };
@@ -257,11 +406,14 @@ class ApiService {
   }) async {
     _initialize();
     try {
+      // Truncate password if longer than 50 characters
+      final truncatedPassword = password.length > 50 ? password.substring(0, 50) : password;
+
       final requestData = {
         'user_id': userId,
         'email': email,
         'full_name': fullName,
-        'password': password,
+        'password': truncatedPassword,
         'role': role,
         'phone': phone,
       };
@@ -300,9 +452,15 @@ class ApiService {
   }) async {
     _initialize();
     try {
+      // Truncate password if longer than 72 bytes to fix backend bug
+      final passwordBytes = password.codeUnits; // Get UTF-8 bytes
+      final truncatedPassword = passwordBytes.length > 72
+          ? String.fromCharCodes(passwordBytes.take(72))
+          : password;
+
       final requestData = {
         'user_id': userId,
-        'password': password,
+        'password': truncatedPassword,
       };
 
       final response = await _dio.post(
