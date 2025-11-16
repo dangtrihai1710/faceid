@@ -2,12 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static late Dio _dio;
   static const String _baseUrl = 'http://192.168.100.142:8000'; // Updated backend URL
+  static String? _authToken;
+  static const String _tokenKey = 'auth_token';
 
-  static void _initialize() {
+  static Future<void> _initialize() async {
+    // Load token from storage
+    await _loadToken();
+
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 30),
@@ -15,10 +21,11 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        if (_authToken != null) 'Authorization': 'Bearer $_authToken',
       },
     ));
 
-    // Add request interceptor for authorization if needed
+    // Add request interceptor for authorization
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -27,10 +34,9 @@ class ApiService {
             debugPrint('Request Data: ${options.data}');
           }
           // Add auth token if available
-          // final token = getAuthToken();
-          // if (token != null) {
-          //   options.headers['Authorization'] = 'Bearer $token';
-          // }
+          if (_authToken != null) {
+            options.headers['Authorization'] = 'Bearer $_authToken';
+          }
           handler.next(options);
         },
         onResponse: (response, handler) {
@@ -48,6 +54,87 @@ class ApiService {
     );
   }
 
+  // Token management methods
+  static Future<void> saveToken(String token) async {
+    _authToken = token;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+      debugPrint('Token saved successfully');
+    } catch (e) {
+      debugPrint('Error saving token: $e');
+    }
+  }
+
+  static Future<void> _loadToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _authToken = prefs.getString(_tokenKey);
+      if (_authToken != null) {
+        debugPrint('Token loaded successfully');
+      }
+    } catch (e) {
+      debugPrint('Error loading token: $e');
+    }
+  }
+
+  static Future<void> clearToken() async {
+    _authToken = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      debugPrint('Token cleared successfully');
+    } catch (e) {
+      debugPrint('Error clearing token: $e');
+    }
+  }
+
+  static bool hasToken() {
+    return _authToken != null && _authToken!.isNotEmpty;
+  }
+
+  // Check if user is authenticated before making API calls
+  static bool ensureAuthenticated() {
+    if (!hasToken()) {
+      debugPrint('Error: No authentication token available. Please login first.');
+      return false;
+    }
+    return true;
+  }
+
+  // Login method that saves token to both systems
+  static Future<Map<String, dynamic>?> simpleLogin({
+    required String userId,
+    required String password,
+  }) async {
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/auth/login',
+        data: {
+          'user_id': userId,
+          'password': password,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData['data'] != null && responseData['data']['access_token'] != null) {
+          await saveToken(responseData['data']['access_token']);
+          debugPrint('Simple login successful, token saved');
+        }
+        return responseData;
+      }
+    } catch (e) {
+      debugPrint('Simple login error: $e');
+      return {
+        'success': false,
+        'message': 'Login failed: $e',
+      };
+    }
+    return null;
+  }
+
   static Future<String?> uploadImageForFaceRecognition({
     required String imagePath,
     required String classId,
@@ -55,8 +142,12 @@ class ApiService {
     Map<String, dynamic>? gpsData,
     String? deviceId,
     double confidenceThreshold = 0.85,
-  }) {
-    _initialize();
+  }) async {
+    if (!ensureAuthenticated()) {
+      return 'Error: Please login first to use face recognition';
+    }
+
+    await _initialize();
     return _performFaceRecognitionUpload(
       imagePath: imagePath,
       classId: classId,
@@ -78,7 +169,14 @@ class ApiService {
     String? deviceId,
     double confidenceThreshold = 0.85,
   }) async {
-    _initialize();
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to register face',
+      };
+    }
+
+    await _initialize();
     try {
       // Read image file and convert to base64
       final imageFile = File(imagePath);
@@ -86,7 +184,7 @@ class ApiService {
       final base64Image = base64Encode(imageBytes);
 
       final requestData = {
-        'image_data': base64Image,
+        'image_data': 'data:image/jpeg;base64,$base64Image',
         'user_id': userId,
         'class_id': classId,
         'full_name': fullName,
@@ -147,7 +245,14 @@ class ApiService {
     String? deviceId,
     double confidenceThreshold = 0.85,
   }) async {
-    _initialize();
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to register face',
+      };
+    }
+
+    await _initialize();
     try {
       final List<Map<String, String>> imageData = [];
 
@@ -157,7 +262,7 @@ class ApiService {
         final base64Image = base64Encode(imageBytes);
 
         imageData.add({
-          'image_data': base64Image,
+          'image_data': 'data:image/jpeg;base64,$base64Image',
           'image_name': 'face_${imageData.length + 1}.jpg',
         });
       }
@@ -221,6 +326,7 @@ class ApiService {
     String? deviceId,
     double confidenceThreshold = 0.85,
   }) async {
+    await _initialize();
     try {
       // Read image file and convert to base64
       final imageFile = File(imagePath);
@@ -228,7 +334,7 @@ class ApiService {
       final base64Image = base64Encode(imageBytes);
 
       final requestData = {
-        'image_data': base64Image,
+        'image_data': 'data:image/jpeg;base64,$base64Image',
         'class_id': classId,
         'confidence_threshold': confidenceThreshold,
         'gps_data': gpsData,
@@ -270,7 +376,7 @@ class ApiService {
     required String role,
     int count = 5,
   }) async {
-    _initialize();
+    await _initialize();
     try {
       final response = await _dio.get(
         '/api/v1/auth/suggest-user-id',
@@ -306,7 +412,7 @@ class ApiService {
   static Future<Map<String, dynamic>?> checkUserIdAvailability({
     required String userId,
   }) async {
-    _initialize();
+    await _initialize();
     try {
       final response = await _dio.post(
         '/api/v1/auth/check-user-id',
@@ -343,7 +449,7 @@ class ApiService {
     required String role,
     String? phone,
   }) async {
-    _initialize();
+    await _initialize();
     try {
       // Auto generate user_id
       final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
@@ -404,7 +510,7 @@ class ApiService {
     required String role, // 'student' or 'instructor'
     String? phone,
   }) async {
-    _initialize();
+    await _initialize();
     try {
       // Truncate password if longer than 50 characters
       final truncatedPassword = password.length > 50 ? password.substring(0, 50) : password;
@@ -450,7 +556,7 @@ class ApiService {
     required String userId,
     required String password,
   }) async {
-    _initialize();
+    await _initialize();
     try {
       // Truncate password if longer than 72 bytes for bcrypt compatibility
       final passwordBytes = password.codeUnits; // Get UTF-8 bytes
@@ -473,7 +579,13 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return response.data;
+        // Save the token from successful login
+        final responseData = response.data;
+        if (responseData['data'] != null && responseData['data']['access_token'] != null) {
+          await saveToken(responseData['data']['access_token']);
+          debugPrint('Login successful, token saved');
+        }
+        return responseData;
       }
     } on DioException catch (e) {
       if (e.response?.data?['detail'] != null) {
@@ -501,6 +613,7 @@ class ApiService {
     int page = 1,
     int perPage = 20,
   }) async {
+    await _initialize();
     try {
       final queryParams = <String, dynamic>{
         'page': page,
@@ -527,6 +640,7 @@ class ApiService {
 
   static Future<bool> testConnection() async {
     try {
+      await _initialize();
       final response = await _dio.get('/docs');
       return response.statusCode == 200;
     } catch (e) {

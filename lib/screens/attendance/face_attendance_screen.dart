@@ -34,6 +34,7 @@ class _FaceAttendanceScreenState extends State<FaceAttendanceScreen> {
   void initState() {
     super.initState();
     _initializeCamera();
+    _ensureAuthenticated();
   }
 
   @override
@@ -53,6 +54,29 @@ class _FaceAttendanceScreenState extends State<FaceAttendanceScreen> {
         _errorMessage = 'Lỗi khởi tạo camera: $e';
         _isCameraInitialized = false;
       });
+    }
+  }
+
+  Future<void> _ensureAuthenticated() async {
+    // Auto-login with demo credentials if not authenticated
+    if (!ApiService.hasToken()) {
+      try {
+        debugPrint('No token found, attempting auto-login...');
+        final loginResult = await ApiService.simpleLogin(
+          userId: 'SV789017', // Our previously created test user
+          password: 'test123',
+        );
+
+        if (loginResult != null && loginResult['success'] == true) {
+          debugPrint('Auto-login successful');
+        } else {
+          debugPrint('Auto-login failed: ${loginResult?['message'] ?? 'Unknown error'}');
+        }
+      } catch (e) {
+        debugPrint('Auto-login error: $e');
+      }
+    } else {
+      debugPrint('Token already available');
     }
   }
 
