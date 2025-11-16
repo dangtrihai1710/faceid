@@ -452,11 +452,15 @@ class ApiService {
   }) async {
     _initialize();
     try {
-      // Truncate password if longer than 72 bytes to fix backend bug
+      // Truncate password if longer than 72 bytes for bcrypt compatibility
       final passwordBytes = password.codeUnits; // Get UTF-8 bytes
       final truncatedPassword = passwordBytes.length > 72
           ? String.fromCharCodes(passwordBytes.take(72))
           : password;
+
+      debugPrint('Original password: $password (length: ${password.length})');
+      debugPrint('Password bytes: ${passwordBytes.length}');
+      debugPrint('Truncated password: $truncatedPassword');
 
       final requestData = {
         'user_id': userId,
