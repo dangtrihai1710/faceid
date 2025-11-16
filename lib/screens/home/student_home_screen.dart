@@ -11,6 +11,7 @@ import '../../core/models/user_models.dart' as user_models;
 import '../../core/models/class_models.dart';
 import '../../core/services/attendance_face_service.dart';
 import '../../core/services/test_data_service.dart';
+import '../../core/services/api_service.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -20,9 +21,15 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-  late user_models.User _currentUser;
-  late List<Class> _todayClasses;
-  late user_models.AttendanceStats _stats;
+  user_models.User? _currentUser;
+  List<Class> _todayClasses = [];
+  user_models.AttendanceStats _stats = user_models.AttendanceStats(
+    totalClasses: 0,
+    attendedClasses: 0,
+    missedClasses: 0,
+    lateClasses: 0,
+    attendanceRate: 0.0,
+  );
   int _selectedIndex = 0;
   final AttendanceFaceService _attendanceService = AttendanceFaceService();
 
@@ -32,33 +39,90 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _loadUserData();
   }
 
-  void _loadUserData() {
-    setState(() {
-      // Mock user Nguyễn Văn An
+  Future<void> _loadUserData() async {
+    try {
+      // Check if user has authentication token
+      if (ApiService.hasToken()) {
+        // Try to get user data from API first for fresh data
+        final userData = await ApiService.getCurrentUser();
+
+        if (userData != null && userData['data'] != null) {
+          final userInfo = userData['data'];
+          _currentUser = user_models.User(
+            id: userInfo['userId'] ?? 'Unknown',
+            userCode: userInfo['userId'] ?? 'Unknown',
+            fullName: userInfo['fullName'] ?? 'Unknown User',
+            email: userInfo['email'] ?? 'unknown@email.com',
+            role: userInfo['role'] ?? 'student',
+            department: 'Công nghệ thông tin', // Backend doesn't provide department yet
+            createdAt: DateTime.now().subtract(const Duration(days: 365)),
+            updatedAt: DateTime.now(),
+          );
+
+          debugPrint('✅ User data loaded from API: ${_currentUser!.fullName}');
+        } else {
+          // Fallback user if API fails
+          debugPrint('⚠️ API failed, using fallback user');
+          _currentUser = user_models.User(
+            id: 'SV001',
+            userCode: 'SV001',
+            fullName: 'Sinh viên',
+            email: 'student@university.edu.vn',
+            role: 'student',
+            department: 'Công nghệ thông tin',
+            createdAt: DateTime.now().subtract(const Duration(days: 365)),
+            updatedAt: DateTime.now(),
+          );
+        }
+      } else {
+        // No token available
+        debugPrint('⚠️ No authentication token found');
+        _currentUser = user_models.User(
+          id: 'SV001',
+          userCode: 'SV001',
+          fullName: 'Sinh viên',
+          email: 'student@university.edu.vn',
+          role: 'student',
+          department: 'Công nghệ thông tin',
+          createdAt: DateTime.now().subtract(const Duration(days: 365)),
+          updatedAt: DateTime.now(),
+        );
+      }
+
+      // Get student classes using user ID
+      if (_currentUser != null) {
+        final studentClasses = TestDataService.getClassesForStudent(_currentUser!.id);
+        _todayClasses = studentClasses;
+
+        // Mock stats for now - will implement real stats later
+        _stats = user_models.AttendanceStats(
+          totalClasses: 45,
+          attendedClasses: 40,
+          missedClasses: 3,
+          lateClasses: 2,
+          attendanceRate: 0.89,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading user data: $e');
+      // Fallback user on any error
       _currentUser = user_models.User(
         id: 'SV001',
         userCode: 'SV001',
-        fullName: 'Nguyễn Văn An',
-        email: 'nguyen.van.an@university.edu.vn',
+        fullName: 'Sinh viên',
+        email: 'student@university.edu.vn',
         role: 'student',
         department: 'Công nghệ thông tin',
         createdAt: DateTime.now().subtract(const Duration(days: 365)),
         updatedAt: DateTime.now(),
       );
+      _todayClasses = TestDataService.getClassesForStudent(_currentUser!.id);
+    }
 
-      // Get student classes
-      final studentClasses = TestDataService.getClassesForStudent(_currentUser.id);
-      _todayClasses = studentClasses;
-
-      // Mock stats
-      _stats = user_models.AttendanceStats(
-        totalClasses: 45,
-        attendedClasses: 40,
-        missedClasses: 3,
-        lateClasses: 2,
-        attendanceRate: 0.89,
-      );
-    });
+    // Set state to trigger UI update
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Class? get _currentClass {
@@ -133,18 +197,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   void _navigateToFaceRegistration(Class classItem) async {
+    if (_currentUser == null) {
+      _showErrorDialog('Chưa tải được thông tin người dùng');
+      return;
+    }
+
     try {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => FaceRegistrationScreen(
-            currentUser: _currentUser,
+            currentUser: _currentUser!,
             classId: classItem.id,
             onRegistrationComplete: () {
               _showAttendanceSuccessDialog(AttendanceRecord(
                 id: 'face_registration_${DateTime.now().millisecondsSinceEpoch}',
-                studentId: _currentUser.id,
-                studentName: _currentUser.fullName,
+                studentId: _currentUser!.id,
+                studentName: _currentUser!.fullName,
                 classId: classItem.id,
                 className: classItem.name,
                 sessionId: 'registration_${DateTime.now().millisecondsSinceEpoch}',
@@ -164,18 +233,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   void _navigateToInitialFaceUpload(Class classItem) async {
+    if (_currentUser == null) {
+      _showErrorDialog('Chưa tải được thông tin người dùng');
+      return;
+    }
+
     try {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => FaceInitialUploadScreen(
-            currentUser: _currentUser,
+            currentUser: _currentUser!,
             classId: classItem.id,
             onUploadComplete: () {
               _showAttendanceSuccessDialog(AttendanceRecord(
                 id: 'face_initial_upload_${DateTime.now().millisecondsSinceEpoch}',
-                studentId: _currentUser.id,
-                studentName: _currentUser.fullName,
+                studentId: _currentUser!.id,
+                studentName: _currentUser!.fullName,
                 classId: classItem.id,
                 className: classItem.name,
                 sessionId: 'initial_upload_${DateTime.now().millisecondsSinceEpoch}',
@@ -297,6 +371,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildHomeTab() {
     final currentClass = _currentClass;
 
+    // Show loading if user data not loaded yet
+    if (_currentUser == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -324,7 +405,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _currentUser.fullName,
+                  _currentUser!.fullName,
                   style: AppTextStyles.heading2.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -332,7 +413,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _currentUser.userCode,
+                  _currentUser!.userCode,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),
@@ -712,7 +793,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Widget _buildClassesTab() {
-    final studentClasses = TestDataService.getClassesForStudent(_currentUser.id);
+    if (_currentUser == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    final studentClasses = TestDataService.getClassesForStudent(_currentUser!.id);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -757,6 +844,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Widget _buildProfileTab() {
+    if (_currentUser == null) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -785,7 +878,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _currentUser.fullName,
+                  _currentUser!.fullName,
                   style: AppTextStyles.heading3.copyWith(
                     color: AppColors.onBackground,
                     fontWeight: FontWeight.bold,
@@ -793,21 +886,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _currentUser.userCode,
+                  _currentUser!.userCode,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _currentUser.email,
+                  _currentUser!.email,
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _currentUser.department ?? 'Công nghệ thông tin',
+                  _currentUser!.department ?? 'Công nghệ thông tin',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.onSurface.withValues(alpha: 0.7),
                   ),
@@ -859,11 +952,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildInfoRow('Họ và tên', _currentUser.fullName),
-                _buildInfoRow('Mã sinh viên', _currentUser.userCode),
-                _buildInfoRow('Email', _currentUser.email),
-                _buildInfoRow('Khoa', _currentUser.department ?? 'Công nghệ thông tin'),
-                _buildInfoRow('Vai trò', _currentUser.role),
+                _buildInfoRow('Họ và tên', _currentUser!.fullName),
+                _buildInfoRow('Mã sinh viên', _currentUser!.userCode),
+                _buildInfoRow('Email', _currentUser!.email),
+                _buildInfoRow('Khoa', _currentUser!.department ?? 'Công nghệ thông tin'),
+                _buildInfoRow('Vai trò', _currentUser!.role),
               ],
             ),
           ),

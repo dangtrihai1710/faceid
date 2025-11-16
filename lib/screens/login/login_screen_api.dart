@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/primary_button.dart';
-import '../../core/services/auth_service.dart';
+import '../../core/services/api_service.dart';
 import '../../core/models/user_models.dart';
 
 class LoginScreenApi extends StatefulWidget {
@@ -28,8 +28,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  final AuthService _authService = AuthService();
-  List<DemoAccount> _demoAccounts = [];
+    List<DemoAccount> _demoAccounts = [];
 
   @override
   void initState() {
@@ -68,14 +67,16 @@ class _LoginScreenApiState extends State<LoginScreenApi>
 
   Future<void> _initializeAuth() async {
     try {
-      await _authService.initialize();
-
-      // Check if user is already logged in
-      if (_authService.isAuthenticated) {
+      // Check if user has token (already logged in)
+      if (ApiService.hasToken()) {
         if (mounted) {
-          final user = _authService.currentUser!;
-          final route = user.isStudent ? '/student_home' : '/teacher_home';
-          Navigator.pushReplacementNamed(context, route);
+          // Try to get current user to determine route
+          final userData = await ApiService.getCurrentUser();
+          if (userData != null && userData['data'] != null) {
+            final user = userData['data']['user'];
+            final route = user['role'] == 'student' ? '/student_home' : '/teacher_home';
+            Navigator.pushReplacementNamed(context, route);
+          }
         }
       }
     } catch (e) {
@@ -84,16 +85,25 @@ class _LoginScreenApiState extends State<LoginScreenApi>
   }
 
   Future<void> _loadDemoAccounts() async {
-    try {
-      final response = await _authService.getDemoAccounts();
-      if (response.success && response.data != null) {
-        setState(() {
-          _demoAccounts = response.data!;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading demo accounts: $e');
-    }
+    // Set default demo accounts for quick login
+    setState(() {
+      _demoAccounts = [
+        DemoAccount(
+          userCode: 'SV001',
+          password: 'student123',
+          role: 'student',
+          fullName: 'Test Student',
+          description: 'Student demo account',
+        ),
+        DemoAccount(
+          userCode: 'GV001',
+          password: 'teacher123',
+          role: 'instructor',
+          fullName: 'Test Instructor',
+          description: 'Instructor demo account',
+        ),
+      ];
+    });
   }
 
   @override
@@ -113,10 +123,10 @@ class _LoginScreenApiState extends State<LoginScreenApi>
     });
 
     try {
-      final response = await _authService.login(
-        userCode: _userIdController.text.trim(),
+      // Use ApiService for real backend login
+      final response = await ApiService.login(
+        userId: _userIdController.text.trim(),
         password: _passwordController.text,
-        rememberMe: _rememberMe,
       );
 
       if (!mounted) return;
@@ -125,22 +135,27 @@ class _LoginScreenApiState extends State<LoginScreenApi>
         _isLoading = false;
       });
 
-      if (response.success && response.data != null) {
-        final user = response.data!.user;
-        final route = user.isStudent ? '/student_home' : '/teacher_home';
+      if (response != null && response['success'] == true) {
+        // Login successful, token is automatically saved by ApiService
+        final userData = response['data'];
+        final user = userData['user'];
 
+        debugPrint('✅ Login successful: ${user['fullName']}');
+
+        // Navigate based on user role
+        final route = user['role'] == 'student' ? '/student_home' : '/teacher_home';
         Navigator.pushReplacementNamed(context, route);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Chào mừng ${user.fullName}!'),
+            content: Text('Chào mừng ${user['fullName']}!'),
             backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response.error ?? 'Đăng nhập thất bại'),
+            content: Text(response?['message'] ?? 'Đăng nhập thất bại'),
             backgroundColor: AppColors.error,
           ),
         );

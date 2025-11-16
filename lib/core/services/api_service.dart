@@ -236,11 +236,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>?> uploadMultipleFaceImages({
     required List<String> imagePaths,
-    required String userId,
     required String classId,
-    required String fullName,
-    String? email,
-    String? phone,
     Map<String, dynamic>? gpsData,
     String? deviceId,
     double confidenceThreshold = 0.85,
@@ -263,21 +259,14 @@ class ApiService {
 
         imageData.add({
           'image_data': 'data:image/jpeg;base64,$base64Image',
-          'image_name': 'face_${imageData.length + 1}.jpg',
         });
       }
 
       final requestData = {
         'images': imageData,
-        'user_id': userId,
-        'class_id': classId,
-        'full_name': fullName,
         'confidence_threshold': confidenceThreshold,
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
         'gps_data': gpsData,
         'device_id': deviceId ?? 'unknown',
-        'registration_type': 'face_id_multiple',
         'location_validation_required': true,
       };
 
@@ -316,6 +305,29 @@ class ApiService {
         'message': 'Unexpected error: $e',
       };
     }
+  }
+
+  static Future<Map<String, dynamic>?> getCurrentUser() async {
+    if (!ensureAuthenticated()) {
+      return null;
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.get('/api/v1/auth/me');
+
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        debugPrint('Get current user error: ${e.response!.data['detail']}');
+      }
+      debugPrint('Get current user network error: ${e.message}');
+    } catch (e) {
+      debugPrint('Get current user unexpected error: $e');
+    }
+    return null;
   }
 
   static Future<String?> _performFaceRecognitionUpload({

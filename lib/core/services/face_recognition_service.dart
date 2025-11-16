@@ -257,10 +257,7 @@ class FaceRecognitionService {
       // Use real API for multiple face registration
       final result = await ApiService.uploadMultipleFaceImages(
         imagePaths: imagePaths,
-        userId: studentId,
         classId: classId ?? '',
-        fullName: fullName ?? 'Student',
-        email: email,
         confidenceThreshold: confidenceThreshold,
       );
 

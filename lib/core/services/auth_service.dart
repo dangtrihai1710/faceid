@@ -5,7 +5,6 @@ import '../models/api_response.dart';
 import '../models/user_models.dart';
 import '../config/api_config.dart';
 import 'api_client.dart';
-import 'api_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();

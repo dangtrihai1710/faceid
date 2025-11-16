@@ -367,10 +367,7 @@ class _FaceInitialUploadScreenState extends State<FaceInitialUploadScreen> {
       // Use the real API service to register face images
       final result = await ApiService.uploadMultipleFaceImages(
         imagePaths: imagePaths,
-        userId: widget.currentUser.id,
         classId: widget.classId,
-        fullName: widget.currentUser.fullName,
-        email: widget.currentUser.email,
         confidenceThreshold: 0.85,
       );
 
