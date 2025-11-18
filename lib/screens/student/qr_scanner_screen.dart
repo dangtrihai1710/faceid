@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../services/qr_service.dart';
-import '../services/class_service.dart';
-import '../services/auth_service.dart';
-import '../models/attendance_model.dart';
-import '../models/user.dart';
-import '../models/class_model.dart';
+import '../../services/qr_service.dart';
+import '../../services/class_service.dart';
+import '../../services/auth_service.dart';
+import '../../models/attendance_model.dart';
+import '../../models/user.dart';
+import '../../models/class_model.dart';
 import 'package:geolocator/geolocator.dart';
 
 class QRScannerScreen extends StatefulWidget {

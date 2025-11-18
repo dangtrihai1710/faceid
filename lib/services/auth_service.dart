@@ -28,7 +28,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, user.token);
       await prefs.setString(_userKey, jsonEncode(user.toJson()));
-      print('✅ Authentication state saved for user: ${user.username}');
+      print('✅ Authentication state saved for user: ${user.userId}');
     } catch (e) {
       print('❌ Error saving auth state: $e');
       throw Exception('Lỗi khi lưu trạng thái đăng nhập');
@@ -69,7 +69,7 @@ class AuthService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_usersKey, jsonEncode(users));
-      print('✅ User saved to local storage: ${userData['username']}');
+      print('✅ User saved to local storage: ${userData['userId']}');
     } catch (e) {
       print('❌ Error saving user to storage: $e');
       throw Exception('Lỗi khi lưu thông tin người dùng');
@@ -77,14 +77,14 @@ class AuthService {
   }
 
   // Register new user
-  Future<User> register(String username, String email, String password, String fullName, {String role = 'student'}) async {
+  Future<User> register(String userId, String email, String password, String fullName, {String role = 'student'}) async {
     try {
-      print('🔄 Starting registration for: $username');
+      print('🔄 Starting registration for: $userId');
 
-      // Check if username already exists
+      // Check if userId already exists
       final users = await _getRegisteredUsers();
       final existingUser = users.firstWhere(
-        (user) => user['username'] == username,
+        (user) => user['userId'] == userId,
         orElse: () => {},
       );
 
@@ -108,7 +108,7 @@ class AuthService {
       // Create user data
       final userData = {
         'id': 'user_${DateTime.now().millisecondsSinceEpoch}',
-        'username': username,
+        'userId': userId,
         'email': email,
         'password': hashedPassword,
         'fullName': fullName,
@@ -122,7 +122,7 @@ class AuthService {
       // Create User object
       final user = User(
         id: userData['id']?.toString() ?? '',
-        username: username,
+        userId: userId,
         email: email,
         fullName: fullName,
         token: 'token_${DateTime.now().millisecondsSinceEpoch}',
@@ -133,7 +133,7 @@ class AuthService {
       // Save authentication state
       await _saveAuthState(user);
 
-      print('✅ Registration successful for: $username');
+      print('✅ Registration successful for: $userId');
       return user;
     } catch (e) {
       print('❌ Registration error: $e');
@@ -142,19 +142,19 @@ class AuthService {
   }
 
   // Login user
-  Future<User> login(String username, String password, {String role = 'student'}) async {
+  Future<User> login(String userId, String password, {String role = 'student'}) async {
     try {
-      print('🔄 Starting login for: $username');
+      print('🔄 Starting login for: $userId');
 
       // Check demo accounts first
-      if (_demoAccounts.containsKey(username) && _demoAccounts[username] == password) {
-        print('✅ Demo account login successful: $username');
+      if (_demoAccounts.containsKey(userId) && _demoAccounts[userId] == password) {
+        print('✅ Demo account login successful: $userId');
 
         final user = User(
-          id: 'demo_${username}_id',
-          username: username,
-          email: '${username}@demo.com',
-          fullName: username == 'admin' ? 'Admin Demo' : 'User Demo',
+          id: 'demo_${userId}_id',
+          userId: userId,
+          email: '${userId}@demo.com',
+          fullName: userId == 'admin' ? 'Admin Demo' : 'User Demo',
           token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
           role: role,
           createdAt: DateTime.now(),
@@ -167,7 +167,7 @@ class AuthService {
       // Check registered users
       final users = await _getRegisteredUsers();
       final userData = users.firstWhere(
-        (user) => user['username'] == username,
+        (user) => user['userId'] == userId,
         orElse: () => {},
       );
 
@@ -184,7 +184,7 @@ class AuthService {
       // Create User object
       final user = User(
         id: userData['id'],
-        username: userData['username'],
+        userId: userData['userId'],
         email: userData['email'],
         fullName: userData['fullName'],
         token: 'token_${DateTime.now().millisecondsSinceEpoch}',
@@ -196,7 +196,7 @@ class AuthService {
       // Save authentication state
       await _saveAuthState(user);
 
-      print('✅ Login successful for: $username');
+      print('✅ Login successful for: $userId');
       return user;
     } catch (e) {
       print('❌ Login error: $e');
@@ -258,8 +258,24 @@ class AuthService {
     return _demoAccounts;
   }
 
+  // Create demo users for mobile testing
+  static Future<void> createDemoUsers() async {
+    try {
+      print('🔄 Creating demo users for mobile testing...');
+
+      await saveUserCredentials('student1', '123456', 'student');
+      await saveUserCredentials('student2', '123456', 'student');
+      await saveUserCredentials('teacher1', '123456', 'instructor');
+      await saveUserCredentials('teacher2', '123456', 'instructor');
+
+      print('✅ Demo users created successfully');
+    } catch (e) {
+      print('❌ Error creating demo users: $e');
+    }
+  }
+
   // Save user credentials for admin functionality
-  static Future<void> saveUserCredentials(String username, String password, String role) async {
+  static Future<void> saveUserCredentials(String userId, String password, String role) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersJson = prefs.getString(_usersKey) ?? '[]';
@@ -267,19 +283,19 @@ class AuthService {
 
       // Check if user already exists
       final existingUserIndex = users.indexWhere(
-        (user) => user['username'] == username,
+        (user) => user['userId'] == userId,
       );
 
       final userData = {
         'id': existingUserIndex >= 0 ? users[existingUserIndex]['id'] : DateTime.now().millisecondsSinceEpoch.toString(),
-        'username': username,
+        'userId': userId,
         'password': _hashPassword(password),
         'role': role,
         'createdAt': existingUserIndex >= 0
             ? users[existingUserIndex]['createdAt']
             : DateTime.now().toIso8601String(),
-        'email': '$username@demo.com',
-        'fullName': username == 'admin' ? 'Admin User' : '${username}_user',
+        'email': '$userId@demo.com',
+        'fullName': userId == 'admin' ? 'Admin User' : '${userId}_user',
       };
 
       if (existingUserIndex >= 0) {
@@ -289,7 +305,7 @@ class AuthService {
       }
 
       await prefs.setString(_usersKey, jsonEncode(users));
-      print('✅ User credentials saved for: $username');
+      print('✅ User credentials saved for: $userId');
     } catch (e) {
       print('❌ Error saving user credentials: $e');
     }

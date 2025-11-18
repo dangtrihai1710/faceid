@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import '../models/class_model.dart';
-import '../models/user.dart';
-import '../models/attendance_model.dart';
-import '../services/class_service.dart';
-import '../services/auth_service.dart';
-import '../widgets/camera_view.dart';
-import 'qr_generator_screen.dart';
-import 'qr_generator_enhanced_screen.dart';
-import 'teacher_scan_screen.dart';
+import '../../models/class_model.dart';
+import '../../models/user.dart';
+import '../../models/attendance_model.dart';
+import '../../services/class_service.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/camera_view.dart';
+import '../teacher/teacher_scan_screen.dart';
 
 class ClassDetailScreen extends StatefulWidget {
   final ClassModel classModel;
@@ -162,16 +160,16 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   List<User> _generateMockStudents() {
     // Mock student data for demonstration
     return [
-      User(id: '1', fullName: 'Nguyễn Văn An', email: 'an@example.com', username: 'an', token: 'token1', role: 'student', createdAt: DateTime.now()),
-      User(id: '2', fullName: 'Trần Thị Bình', email: 'binh@example.com', username: 'binh', token: 'token2', role: 'student', createdAt: DateTime.now()),
-      User(id: '3', fullName: 'Lê Văn Cường', email: 'cuong@example.com', username: 'cuong', token: 'token3', role: 'student', createdAt: DateTime.now()),
-      User(id: '4', fullName: 'Phạm Thị Dung', email: 'dung@example.com', username: 'dung', token: 'token4', role: 'student', createdAt: DateTime.now()),
-      User(id: '5', fullName: 'Hoàng Văn Em', email: 'em@example.com', username: 'em', token: 'token5', role: 'student', createdAt: DateTime.now()),
-      User(id: '6', fullName: 'Đỗ Thị Giang', email: 'giang@example.com', username: 'giang', token: 'token6', role: 'student', createdAt: DateTime.now()),
-      User(id: '7', fullName: 'Bùi Văn Hùng', email: 'hung@example.com', username: 'hung', token: 'token7', role: 'student', createdAt: DateTime.now()),
-      User(id: '8', fullName: 'Ngô Thị Lan', email: 'lan@example.com', username: 'lan', token: 'token8', role: 'student', createdAt: DateTime.now()),
-      User(id: '9', fullName: 'Đinh Văn Minh', email: 'minh@example.com', username: 'minh', token: 'token9', role: 'student', createdAt: DateTime.now()),
-      User(id: '10', fullName: 'Vũ Thị Nga', email: 'nga@example.com', username: 'nga', token: 'token10', role: 'student', createdAt: DateTime.now()),
+      User(id: '1', userId: 'an', fullName: 'Nguyễn Văn An', email: 'an@example.com', token: 'token1', role: 'student', createdAt: DateTime.now()),
+      User(id: '2', userId: 'binh', fullName: 'Trần Thị Bình', email: 'binh@example.com', token: 'token2', role: 'student', createdAt: DateTime.now()),
+      User(id: '3', userId: 'cuong', fullName: 'Lê Văn Cường', email: 'cuong@example.com', token: 'token3', role: 'student', createdAt: DateTime.now()),
+      User(id: '4', userId: 'dung', fullName: 'Phạm Thị Dung', email: 'dung@example.com', token: 'token4', role: 'student', createdAt: DateTime.now()),
+      User(id: '5', userId: 'em', fullName: 'Hoàng Văn Em', email: 'em@example.com', token: 'token5', role: 'student', createdAt: DateTime.now()),
+      User(id: '6', userId: 'giang', fullName: 'Đỗ Thị Giang', email: 'giang@example.com', token: 'token6', role: 'student', createdAt: DateTime.now()),
+      User(id: '7', userId: 'hung', fullName: 'Bùi Văn Hùng', email: 'hung@example.com', token: 'token7', role: 'student', createdAt: DateTime.now()),
+      User(id: '8', userId: 'lan', fullName: 'Ngô Thị Lan', email: 'lan@example.com', token: 'token8', role: 'student', createdAt: DateTime.now()),
+      User(id: '9', userId: 'minh', fullName: 'Đinh Văn Minh', email: 'minh@example.com', token: 'token9', role: 'student', createdAt: DateTime.now()),
+      User(id: '10', userId: 'nga', fullName: 'Vũ Thị Nga', email: 'nga@example.com', token: 'token10', role: 'student', createdAt: DateTime.now()),
     ];
   }
 
@@ -610,12 +608,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => QRGeneratorEnhancedScreen(
-                                classModel: _currentClass,
-                                currentUser: widget.currentUser,
-                              ),
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Tính năng tạo QR đang phát triển!'),
                             ),
                           );
                         },

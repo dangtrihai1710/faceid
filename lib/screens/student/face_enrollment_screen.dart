@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import '../widgets/camera_view.dart';
-import '../services/face_enrollment_service.dart';
-import '../models/face_model.dart';
-import '../models/user.dart';
+import '../../widgets/camera_view.dart';
+import '../../services/face_enrollment_service.dart';
+import '../../models/face_model.dart';
+import '../../models/user.dart';
 
 class FaceEnrollmentScreen extends StatefulWidget {
   final User user;
@@ -307,7 +307,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                     ),
                   ),
                   Text(
-                    'MSSV: ${widget.user.username}',
+                    'MSSV: ${widget.user.userId}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,

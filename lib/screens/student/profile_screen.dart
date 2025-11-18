@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/face_enrollment_service.dart';
-import '../models/user.dart';
-import '../models/attendance_model.dart';
-import '../services/class_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/face_enrollment_service.dart';
+import '../../models/user.dart';
+import '../../models/attendance_model.dart';
+import '../../services/class_service.dart';
 import 'face_enrollment_screen.dart';
-import 'login_screen.dart';
+import '../shared/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final User currentUser;
@@ -193,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                   const SizedBox(height: 20),
 
                   // Info Items
-                  _buildInfoItem('Mã số sinh viên', widget.currentUser.username, Icons.badge),
+                  _buildInfoItem('Mã số sinh viên', widget.currentUser.userId, Icons.badge),
                   const SizedBox(height: 12),
                   _buildInfoItem('Email', widget.currentUser.email, Icons.email),
                   const SizedBox(height: 12),

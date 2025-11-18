@@ -1,6 +1,6 @@
 class User {
   final String id;
-  final String username;
+  final String userId;
   final String email;
   final String fullName;
   final String token;
@@ -10,7 +10,7 @@ class User {
 
   User({
     required this.id,
-    required this.username,
+    required this.userId,
     required this.email,
     required this.fullName,
     required this.token,
@@ -22,7 +22,7 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',
-      username: json['username']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       fullName: json['fullName']?.toString() ?? json['full_name']?.toString() ?? '',
       token: json['token']?.toString() ?? '',
@@ -39,7 +39,7 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'username': username,
+      'userId': userId,
       'email': email,
       'fullName': fullName,
       'token': token,
@@ -51,7 +51,7 @@ class User {
 
   User copyWith({
     String? id,
-    String? username,
+    String? userId,
     String? email,
     String? fullName,
     String? token,
@@ -61,7 +61,7 @@ class User {
   }) {
     return User(
       id: id ?? this.id,
-      username: username ?? this.username,
+      userId: userId ?? this.userId,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       token: token ?? this.token,
@@ -73,7 +73,7 @@ class User {
 
   @override
   String toString() {
-    return 'User(id: $id, username: $username, email: $email, fullName: $fullName)';
+    return 'User(id: $id, userId: $userId, email: $email, fullName: $fullName)';
   }
 
   @override
@@ -81,12 +81,12 @@ class User {
     if (identical(this, other)) return true;
     return other is User &&
         other.id == id &&
-        other.username == username &&
+        other.userId == userId &&
         other.email == email;
   }
 
   @override
   int get hashCode {
-    return id.hashCode ^ username.hashCode ^ email.hashCode;
+    return id.hashCode ^ userId.hashCode ^ email.hashCode;
   }
 }

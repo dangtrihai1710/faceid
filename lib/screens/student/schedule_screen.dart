@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/class_service.dart';
-import '../models/class_model.dart';
-import '../models/user.dart';
-import '../models/attendance_model.dart';
-import 'class_detail_screen.dart';
+import '../../services/class_service.dart';
+import '../../models/class_model.dart';
+import '../../models/user.dart';
+import '../../models/attendance_model.dart';
+import '../admin/class_detail_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   final User currentUser;
@@ -99,7 +99,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> with TickerProviderStat
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Lịch học',
+          'Thời khóa biểu',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue[700],
@@ -110,8 +110,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> with TickerProviderStat
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: const [
-            Tab(text: 'Theo tuần'),
-            Tab(text: 'Theo ngày'),
+            Tab(text: 'Lịch tuần'),
+            Tab(text: 'Hôm nay'),
           ],
         ),
       ),

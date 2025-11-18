@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import '../models/user.dart';
-import '../models/class_model.dart';
-import '../models/attendance_model.dart';
-import '../services/class_service.dart';
-import '../widgets/camera_view.dart';
+import '../../models/user.dart';
+import '../../models/class_model.dart';
+import '../../models/attendance_model.dart';
+import '../../services/class_service.dart';
+import '../../widgets/camera_view.dart';
 
 class TeacherScanScreen extends StatefulWidget {
   final ClassModel classModel;

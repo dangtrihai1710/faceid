@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/class_service.dart';
-import '../models/attendance_model.dart';
-import '../models/user.dart';
-import '../models/class_model.dart';
+import '../../services/class_service.dart';
+import '../../models/attendance_model.dart';
+import '../../models/user.dart';
+import '../../models/class_model.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   final User currentUser;
