@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/api_response.dart';
 import '../models/class_models.dart';
@@ -35,14 +36,22 @@ class AttendanceService {
   // Mark attendance using face recognition
   Future<ApiResponse<AttendanceRecord>> markAttendanceWithFace(
     String sessionId,
-    File faceImage,
-  ) async {
+    File faceImage, {
+    String? classId,
+  }) async {
     try {
-      final response = await _apiClient.upload<AttendanceRecord>(
+      // Convert image to base64
+      final imageBytes = await faceImage.readAsBytes();
+      final base64Image = base64Encode(imageBytes);
+      final imageData = 'data:image/jpeg;base64,$base64Image';
+
+      final response = await _apiClient.post<AttendanceRecord>(
         ApiConfig.recognizeFaceEndpoint,
-        file: faceImage,
         data: {
+          'image_data': imageData,
           'session_id': sessionId,
+          'class_id': classId ?? 'CLASS_FACEID_DEMO',  // Add class_id with default fallback
+          'confidence_threshold': 0.85,
         },
         fromJson: (data) => AttendanceRecord.fromJson(data),
       );

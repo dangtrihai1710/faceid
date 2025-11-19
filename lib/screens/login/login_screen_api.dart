@@ -75,7 +75,9 @@ class _LoginScreenApiState extends State<LoginScreenApi>
           if (userData != null && userData['data'] != null) {
             final user = userData['data']['user'];
             final route = user['role'] == 'student' ? '/student_home' : '/teacher_home';
-            Navigator.pushReplacementNamed(context, route);
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, route);
+            }
           }
         }
       }

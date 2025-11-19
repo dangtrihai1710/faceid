@@ -33,6 +33,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _selectedIndex = 0;
   final AttendanceFaceService _attendanceService = AttendanceFaceService();
 
+  // Face registration status
+  bool _isFaceRegistered = false;
+  Map<String, dynamic>? _faceRegistrationStatus;
+  bool _isLoadingFaceStatus = false;
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +107,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           lateClasses: 2,
           attendanceRate: 0.89,
         );
+
+        // Check face registration status
+        await _checkFaceRegistrationStatus();
       }
     } catch (e) {
       debugPrint('❌ Error loading user data: $e');
@@ -328,6 +336,101 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       default:
         return status;
     }
+  }
+
+  // Check face registration status
+  Future<void> _checkFaceRegistrationStatus() async {
+    if (_currentUser == null) return;
+
+    try {
+      setState(() {
+        _isLoadingFaceStatus = true;
+      });
+
+      final statusData = await ApiService.getFaceRegistrationStatus(_currentUser!.id);
+
+      if (statusData != null && statusData['success'] == true) {
+        setState(() {
+          _isFaceRegistered = statusData['is_registered'] == true;
+          _faceRegistrationStatus = statusData;
+        });
+
+        debugPrint('✅ Face registration status: $_isFaceRegistered');
+        if (_isFaceRegistered) {
+          debugPrint('   - Registered images: ${_faceRegistrationStatus!['num_encodings']}');
+          debugPrint('   - Average quality: ${_faceRegistrationStatus!['avg_quality']}');
+        }
+      } else {
+        setState(() {
+          _isFaceRegistered = false;
+          _faceRegistrationStatus = null;
+        });
+        debugPrint('❌ Failed to get face registration status');
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking face registration status: $e');
+      setState(() {
+        _isFaceRegistered = false;
+        _faceRegistrationStatus = null;
+      });
+    } finally {
+      setState(() {
+        _isLoadingFaceStatus = false;
+      });
+    }
+  }
+
+  // Show face registration options dialog
+  void _showFaceRegistrationOptions() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Quản lý Face ID'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Trạng thái: Đã đăng ký ${_faceRegistrationStatus!['num_encodings']} ảnh',
+                style: AppTextStyles.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Chất lượng: ${(_faceRegistrationStatus!['avg_quality'] * 100).toStringAsFixed(1)}%',
+                style: AppTextStyles.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              Text('Bạn muốn:', style: AppTextStyles.bodySmall),
+              const SizedBox(height: 8),
+              if (_todayClasses.isNotEmpty) ...[
+                ..._todayClasses.map((classItem) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _navigateToFaceRegistration(classItem);
+                    },
+                    icon: const Icon(Icons.camera_enhance, size: 16),
+                    label: Text('Thêm ảnh - ${classItem.name}'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.primary),
+                      foregroundColor: AppColors.primary,
+                    ),
+                  ),
+                )),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -1069,13 +1172,83 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                if (_todayClasses.isNotEmpty) ...[
+                // Face Registration Status Display
+                if (_isLoadingFaceStatus)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(strokeWidth: 2),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Đang kiểm tra trạng thái Face ID...',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_isFaceRegistered)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.verified, color: Colors.green, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '✅ Đã đăng ký Face ID thành công',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Đã đăng ký ${_faceRegistrationStatus!['num_encodings']} ảnh khuôn mặt',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          'Chất lượng trung bình: ${(_faceRegistrationStatus!['avg_quality'] * 100).toStringAsFixed(1)}%',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        if (_todayClasses.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _showFaceRegistrationOptions(),
+                            icon: const Icon(Icons.settings, size: 16),
+                            label: const Text('Quản lý đăng ký'),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: AppColors.primary),
+                              foregroundColor: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                else if (_todayClasses.isNotEmpty) ...[
+                  // Show class selection for unregistered users
                   Text(
                     'Chọn lớp học để đăng ký Face ID:',
                     style: AppTextStyles.bodySmall,
                   ),
                   const SizedBox(height: 12),
-
                   // Đăng ký lần đầu - nổi bật
                   Container(
                     width: double.infinity,
@@ -1093,10 +1266,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Đăng ký lần đầu (chưa có dữ liệu)',
+                                'Chưa đăng ký Face ID',
                                 style: AppTextStyles.bodySmall.copyWith(
                                   color: Colors.orange,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -1110,7 +1283,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             child: ElevatedButton.icon(
                               onPressed: () => _navigateToInitialFaceUpload(classItem),
                               icon: const Icon(Icons.photo_camera_outlined, size: 16),
-                              label: Text('Lần đầu - ${classItem.name}'),
+                              label: Text('Đăng ký - ${classItem.name}'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
@@ -1122,37 +1295,72 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Đăng ký thêm ảnh - nếu cần
-                  ExpansionTile(
-                    title: Text(
-                      'Đăng ký thêm ảnh',
-                      style: AppTextStyles.bodySmall,
+                ] else if (_isFaceRegistered)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
                     ),
-                    tilePadding: EdgeInsets.zero,
-                    children: _todayClasses.map((classItem) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: OutlinedButton.icon(
-                        onPressed: () => _navigateToFaceRegistration(classItem),
-                        icon: const Icon(Icons.camera_enhance, size: 16),
-                        label: Text('Thêm ảnh - ${classItem.name}'),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: AppColors.primary),
-                          foregroundColor: AppColors.primary,
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.verified, color: Colors.green, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '✅ Đã đăng ký Face ID thành công',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    )).toList(),
-                  ),
-                ] else ...[
-                  Text(
-                    'Bạn chưa có lớp học nào để đăng ký Face ID.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.onSurface.withValues(alpha: 0.7),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Đã đăng ký ${_faceRegistrationStatus!['num_encodings']} ảnh khuôn mặt',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          'Chất lượng trung bình: ${(_faceRegistrationStatus!['avg_quality'] * 100).toStringAsFixed(1)}%',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          '(Không có lớp học để quản lý)',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[500],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.grey, size: 24),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Chưa có lớp học để đăng ký Face ID',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
               ],
             ),
           ),

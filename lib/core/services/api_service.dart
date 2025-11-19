@@ -354,6 +354,10 @@ class ApiService {
         'location_validation_required': true,
       };
 
+      // DEBUG: Log request data
+      debugPrint('🔍 DEBUG: Face recognition request data: $requestData');
+      debugPrint('🔍 DEBUG: class_id in request: ${requestData['class_id']}');
+
       final response = await _dio.post(
         '/api/v1/attendance/recognize-face',
         data: requestData,
@@ -658,5 +662,37 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  // Face Registration Status Methods
+  static Future<Map<String, dynamic>?> getFaceRegistrationStatus(String userId) async {
+    try {
+      await _initialize();
+      final response = await _dio.get(
+        '/api/v1/attendance/face-status/$userId',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Face registration status: ${response.data}');
+        return response.data;
+      }
+    } catch (e) {
+      debugPrint('Error fetching face registration status: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> isUserFaceRegistered(String userId) async {
+    final statusData = await getFaceRegistrationStatus(userId);
+    if (statusData != null && statusData['success'] == true) {
+      return statusData['is_registered'] == true;
+    }
+    return false;
   }
 }
