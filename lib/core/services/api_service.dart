@@ -695,4 +695,38 @@ class ApiService {
     }
     return false;
   }
+
+  // Get student classes from real API
+  static Future<List<Map<String, dynamic>>> getStudentClasses() async {
+    if (!ensureAuthenticated()) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await _dio.get(
+        '/api/v1/classes/',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> classesData = response.data['data'] ?? [];
+        debugPrint('✅ Loaded ${classesData.length} classes from API');
+        return classesData.map((classData) => Map<String, dynamic>.from(classData)).toList();
+      } else {
+        debugPrint('❌ Failed to get student classes: ${response.data}');
+        return [];
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ DioException getting student classes: ${e.response?.data ?? e.message}');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Error getting student classes: $e');
+      return [];
+    }
+  }
 }

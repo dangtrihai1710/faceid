@@ -10,7 +10,7 @@ import '../../screens/attendance/face_initial_upload_screen.dart';
 import '../../core/models/user_models.dart' as user_models;
 import '../../core/models/class_models.dart';
 import '../../core/services/attendance_face_service.dart';
-import '../../core/services/test_data_service.dart';
+// import '../../core/services/test_data_service.dart'; // Using real API instead
 import '../../core/services/api_service.dart';
 
 class StudentHomeScreen extends StatefulWidget {
@@ -37,6 +37,96 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _isFaceRegistered = false;
   Map<String, dynamic>? _faceRegistrationStatus;
   bool _isLoadingFaceStatus = false;
+
+  // Real classes data from API
+  List<Class> _apiClasses = [];
+  bool _isLoadingClasses = false;
+
+  // Convert API data to Class object
+  Class _convertApiDataToClass(Map<String, dynamic> apiData) {
+    // Handle schedule data - could be object or string
+    String scheduleStr = '';
+    if (apiData['schedule'] != null) {
+      if (apiData['schedule'] is Map) {
+        final schedule = apiData['schedule'] as Map<String, dynamic>;
+        // Build schedule string from object
+        final days = schedule['days'] as List<dynamic>? ?? [];
+        final startTime = schedule['start_time'] ?? '';
+        final endTime = schedule['end_time'] ?? '';
+        if (days.isNotEmpty) {
+          scheduleStr = '${days.join(', ')} $startTime-$endTime';
+        } else {
+          scheduleStr = '$startTime-$endTime';
+        }
+      } else {
+        scheduleStr = apiData['schedule'].toString();
+      }
+    }
+
+    return Class(
+      id: apiData['_id']?.toString() ?? apiData['id']?.toString() ?? '',
+      name: apiData['name']?.toString() ?? '',
+      code: apiData['subject_code']?.toString() ?? apiData['code']?.toString() ?? '',
+      description: apiData['description']?.toString(),
+      instructorId: apiData['instructor_id']?.toString() ?? '',
+      instructorName: apiData['instructor_name']?.toString() ?? '',
+      room: apiData['room']?.toString() ?? '',
+      schedule: scheduleStr,
+      enrolledStudents: List<String>.from(apiData['student_ids'] ?? []),
+      maxStudents: (apiData['max_students'] as num?)?.toInt() ?? 50,
+      isActive: apiData['status']?.toString() != 'inactive',
+      startDate: DateTime.now().subtract(const Duration(days: 30)),
+      endDate: DateTime.now().add(const Duration(days: 90)),
+      createdAt: apiData['created_at'] != null
+          ? DateTime.parse(apiData['created_at'])
+          : DateTime.now(),
+      updatedAt: apiData['updated_at'] != null
+          ? DateTime.parse(apiData['updated_at'])
+          : DateTime.now(),
+    );
+  }
+
+  // Load classes from real API
+  Future<void> _loadClassesFromApi() async {
+    if (_currentUser == null) return;
+
+    setState(() {
+      _isLoadingClasses = true;
+    });
+
+    try {
+      debugPrint('🔄 Loading classes from API for user: ${_currentUser!.id}');
+      final classesData = await ApiService.getStudentClasses();
+
+      final classes = classesData.map((data) => _convertApiDataToClass(data)).toList();
+
+      if (mounted) {
+        setState(() {
+          _apiClasses = classes;
+          _todayClasses = classes; // Update _todayClasses with real data
+          _isLoadingClasses = false;
+        });
+        debugPrint('✅ Loaded ${classes.length} classes from API');
+        for (var cls in classes) {
+          debugPrint('   - ${cls.name} (${cls.code}) - ${cls.schedule}');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading classes from API: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingClasses = false;
+        });
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải dữ liệu lớp học: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -94,18 +184,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         );
       }
 
-      // Get student classes using user ID
+      // Get student classes using real API
       if (_currentUser != null) {
-        final studentClasses = TestDataService.getClassesForStudent(_currentUser!.id);
-        _todayClasses = studentClasses;
+        await _loadClassesFromApi();
 
         // Mock stats for now - will implement real stats later
         _stats = user_models.AttendanceStats(
-          totalClasses: 45,
-          attendedClasses: 40,
-          missedClasses: 3,
-          lateClasses: 2,
-          attendanceRate: 0.89,
+          totalClasses: _todayClasses.length,
+          attendedClasses: _todayClasses.isNotEmpty ? (_todayClasses.length * 8 ~/ 10) : 0, // Mock 80% attendance
+          missedClasses: _todayClasses.isNotEmpty ? (_todayClasses.length * 1 ~/ 10) : 0,
+          lateClasses: _todayClasses.isNotEmpty ? (_todayClasses.length * 1 ~/ 10) : 0,
+          attendanceRate: _todayClasses.isNotEmpty ? 0.89 : 0.0,
         );
 
         // Check face registration status
@@ -124,7 +213,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         createdAt: DateTime.now().subtract(const Duration(days: 365)),
         updatedAt: DateTime.now(),
       );
-      _todayClasses = TestDataService.getClassesForStudent(_currentUser!.id);
+      // Try to load classes even for fallback user
+      await _loadClassesFromApi();
     }
 
     // Set state to trigger UI update
@@ -902,21 +992,55 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       );
     }
 
-    final studentClasses = TestDataService.getClassesForStudent(_currentUser!.id);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Lớp học của bạn',
-            style: AppTextStyles.heading3.copyWith(
-              color: AppColors.onBackground,
-              fontWeight: FontWeight.bold,
+    // Show loading while fetching classes from API
+    if (_isLoadingClasses) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Đang tải danh sách lớp học...',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+          ],
+        ),
+      );
+    }
+
+    // Use the already loaded classes from API
+    final studentClasses = _apiClasses;
+
+    return RefreshIndicator(
+      onRefresh: _loadClassesFromApi,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Lớp học của bạn',
+                  style: AppTextStyles.heading3.copyWith(
+                    color: AppColors.onBackground,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${studentClasses.length} lớp',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
           if (studentClasses.isEmpty)
             Center(
               child: Column(
@@ -943,6 +1067,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             )),
         ],
       ),
+    ),
     );
   }
 

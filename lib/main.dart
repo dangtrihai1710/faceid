@@ -5,10 +5,10 @@ import 'screens/login/login_screen_api.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/smart_register_screen.dart';
 import 'screens/home/student_home_screen.dart';
-import 'screens/home/teacher_home_screen.dart';
+// import 'screens/home/teacher_home_screen.dart'; // Removed - using real data
 import 'screens/result_screen.dart';
-import 'screens/schedule/schedule_screen.dart';
-import 'screens/profile/profile_screen.dart';
+// import 'screens/schedule/schedule_screen.dart'; // Removed - using real data
+// import 'screens/profile/profile_screen.dart'; // Removed - using real data
 import 'widgets/camera_view.dart';
 
 Future<void> main() async {
@@ -170,14 +170,14 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/smart_register': (context) => const SmartRegisterScreen(),
         '/student_home': (context) => const StudentHomeScreen(),
-        '/teacher_home': (context) => const TeacherHomeScreen(),
+        // '/teacher_home': (context) => const TeacherHomeScreen(), // Removed - using real data
         '/camera': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           return CameraView(classItem: args);
         },
         '/result': (context) => const ResultScreen(),
-        '/schedule': (context) => const ScheduleScreen(),
-        '/profile': (context) => const ProfileScreen(),
+        // '/schedule': (context) => const ScheduleScreen(), // Removed - using real data
+        // '/profile': (context) => const ProfileScreen(), // Removed - using real data
       },
       onGenerateRoute: (settings) {
         // Handle dynamic routes with arguments
