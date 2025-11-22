@@ -43,24 +43,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   // Convert API data to Class object
   Class _convertApiDataToClass(Map<String, dynamic> apiData) {
-    // Handle schedule data - could be object or string
-    String scheduleStr = '';
-    if (apiData['schedule'] != null) {
-      if (apiData['schedule'] is Map) {
-        final schedule = apiData['schedule'] as Map<String, dynamic>;
-        // Build schedule string from object
-        final days = schedule['days'] as List<dynamic>? ?? [];
-        final startTime = schedule['start_time'] ?? '';
-        final endTime = schedule['end_time'] ?? '';
-        if (days.isNotEmpty) {
-          scheduleStr = '${days.join(', ')} $startTime-$endTime';
-        } else {
-          scheduleStr = '$startTime-$endTime';
-        }
-      } else {
-        scheduleStr = apiData['schedule'].toString();
-      }
-    }
 
     return Class(
       id: apiData['_id']?.toString() ?? apiData['id']?.toString() ?? '',
@@ -69,8 +51,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       description: apiData['description']?.toString(),
       instructorId: apiData['instructor_id']?.toString() ?? '',
       instructorName: apiData['instructor_name']?.toString() ?? '',
-      room: apiData['room']?.toString() ?? '',
-      schedule: scheduleStr,
       enrolledStudents: List<String>.from(apiData['student_ids'] ?? []),
       maxStudents: (apiData['max_students'] as num?)?.toInt() ?? 50,
       isActive: apiData['status']?.toString() != 'inactive',
@@ -107,7 +87,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         });
         debugPrint('✅ Loaded ${classes.length} classes from API');
         for (var cls in classes) {
-          debugPrint('   - ${cls.name} (${cls.code}) - ${cls.schedule}');
+          debugPrint('   - ${cls.name} (${cls.code}) - Giảng viên: ${cls.instructorName}');
         }
       }
     } catch (e) {
@@ -229,9 +209,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     for (var classItem in _todayClasses) {
       // Simple time check - in real app would parse schedule better
-      if (classItem.schedule.contains('7:00') && currentMinutes >= 420 && currentMinutes <= 540) {
+      if (classItem.name.contains('7:00') && currentMinutes >= 420 && currentMinutes <= 540) {
         return classItem;
-      } else if (classItem.schedule.contains('14:00') && currentMinutes >= 840 && currentMinutes <= 960) {
+      } else if (classItem.name.contains('14:00') && currentMinutes >= 840 && currentMinutes <= 960) {
         return classItem;
       }
     }
@@ -757,7 +737,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${classItem.schedule} • Phòng ${classItem.room}',
+            '${classItem.name} • Giảng viên: ${classItem.instructorName}',
             style: AppTextStyles.bodyMedium.copyWith(
               color: Colors.orange.withValues(alpha: 0.8),
             ),
@@ -849,7 +829,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 if (currentClass != null) {
                   _showAttendanceMethodsDialog();
                 } else if (_todayClasses.isNotEmpty) {
-                  _showErrorDialog('Không có lớp học nào đang diễn ra vào thời điểm này');
+                  _showWaitingDialog();
                 } else {
                   _showErrorDialog('Không có lớp học để điểm danh hôm nay');
                 }
@@ -1373,7 +1353,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${classItem.schedule} • Phòng ${classItem.room}',
+              '${classItem.name} • Giảng viên: ${classItem.instructorName}',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.onSurface.withValues(alpha: 0.7),
               ),
@@ -1958,7 +1938,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           children: [
             Text('Lớp: ${classItem.name}', style: AppTextStyles.bodyMedium),
             const SizedBox(height: 8),
-            Text('Thời gian: ${classItem.schedule}', style: AppTextStyles.bodySmall),
+            Text('Thời gian: ${classItem.name}', style: AppTextStyles.bodySmall),
             const SizedBox(height: 16),
             Text('Chọn phương thức điểm danh:', style: AppTextStyles.bodyMedium),
           ],
@@ -2086,10 +2066,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     for (Class classItem in _todayClasses) {
       debugPrint('   Checking class: ${classItem.name}');
-      debugPrint('     - Schedule: ${classItem.schedule}');
+      debugPrint('     - Schedule: ${classItem.name}');
 
       // Parse schedule to find time patterns
-      if (_isCurrentClassInSchedule(classItem.schedule, currentMinutes)) {
+      if (_isCurrentClassInSchedule(classItem.name, currentMinutes)) {
         debugPrint('✅ Found current class: ${classItem.name}');
         return classItem;
       }
@@ -2097,6 +2077,92 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     debugPrint('❌ No current class found');
     return null;
+  }
+
+  // Method to show waiting dialog
+  void _showWaitingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.schedule, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('Mời đợi'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Icon(
+              Icons.access_time_filled,
+              size: 48,
+              color: AppColors.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa đến thời điểm điểm danh',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Vui lòng quay lại vào thời gian của buổi học',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            // Hiển thị các lớp học hôm nay
+            if (_todayClasses.isNotEmpty) ...[
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Các lớp học hôm nay:',
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ..._todayClasses.take(3).map((classItem) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.school_outlined, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${classItem.name} (${classItem.code})',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+              if (_todayClasses.length > 3)
+                Text(
+                  '... và ${_todayClasses.length - 3} lớp khác',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+            ),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Method to get day name

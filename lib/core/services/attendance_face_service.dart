@@ -63,8 +63,6 @@ class AttendanceFaceService {
         description: 'Khóa học phát triển ứng dụng di động với Flutter',
         instructorId: 'GV001',
         instructorName: 'Nguyễn Văn A',
-        room: 'Phòng A301',
-        schedule: 'Thứ 2,4,6 (7:00 - 9:00)',
         enrolledStudents: ['SV001', 'SV002', 'SV003'],
         maxStudents: 30,
         isActive: true,
