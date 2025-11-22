@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/primary_button.dart';
-import '../../core/widgets/stat_card.dart';
 import '../../screens/attendance/attendance_scan_screen.dart';
 import '../../screens/attendance/face_attendance_screen.dart';
 import '../../screens/attendance/face_registration_screen.dart';
@@ -198,6 +197,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         );
 
         // Check face registration status
+        debugPrint('🔍 Current user before Face ID check: ${_currentUser?.id} - ${_currentUser?.fullName}');
         await _checkFaceRegistrationStatus();
       }
     } catch (e) {
@@ -439,15 +439,47 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
       final statusData = await ApiService.getFaceRegistrationStatus(_currentUser!.id);
 
-      if (statusData != null && statusData['success'] == true) {
+      // Debug full API response
+      debugPrint('🔍 Face ID API Response for user: ${_currentUser!.id}');
+      debugPrint('   Full response: $statusData');
+
+      if (statusData != null) {
+        // Handle multiple possible response formats
+        bool isRegistered = false;
+
+        // Standard format with 'success' field
+        if (statusData['success'] == true) {
+          isRegistered = statusData['is_registered'] == true;
+        }
+        // Alternative format - check if user has encodings and status is active
+        else if (statusData['num_encodings'] != null &&
+                 statusData['status'] == 'active' &&
+                 (statusData['num_encodings'] as int) > 0) {
+          isRegistered = true;
+          debugPrint('✅ Using alternative format - detected active face registration');
+        }
+        // Another format - direct check of required fields
+        else if (statusData['encodings'] != null &&
+                 statusData['encodings'].length > 0) {
+          isRegistered = true;
+          debugPrint('✅ Using encodings format - detected face registration');
+        }
+
         setState(() {
-          _isFaceRegistered = statusData['is_registered'] == true;
+          _isFaceRegistered = isRegistered;
           _faceRegistrationStatus = statusData;
         });
 
         debugPrint('✅ Face registration status: $_isFaceRegistered');
+        debugPrint('   - is_registered determined: $isRegistered');
+        debugPrint('   - success field: ${statusData['success']}');
+        debugPrint('   - num_encodings: ${statusData['num_encodings']}');
+        debugPrint('   - avg_quality: ${statusData['avg_quality']}');
+        debugPrint('   - status: ${statusData['status']}');
+        debugPrint('   - encodings length: ${statusData['encodings']?.length}');
+
         if (_isFaceRegistered) {
-          debugPrint('   - Registered images: ${_faceRegistrationStatus!['num_encodings']}');
+          debugPrint('   - Registered images: ${_faceRegistrationStatus!['num_encodings'] ?? statusData['encodings']?.length}');
           debugPrint('   - Average quality: ${_faceRegistrationStatus!['avg_quality']}');
         }
       } else {
@@ -456,6 +488,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           _faceRegistrationStatus = null;
         });
         debugPrint('❌ Failed to get face registration status');
+        debugPrint('   - statusData is null: ${statusData == null}');
+        if (statusData != null) {
+          debugPrint('   - success field: ${statusData['success']}');
+          debugPrint('   - is_registered field: ${statusData['is_registered']}');
+        }
       }
     } catch (e) {
       debugPrint('❌ Error checking face registration status: $e');
@@ -491,25 +528,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 style: AppTextStyles.bodySmall,
               ),
               const SizedBox(height: 16),
-              Text('Bạn muốn:', style: AppTextStyles.bodySmall),
-              const SizedBox(height: 8),
-              if (_todayClasses.isNotEmpty) ...[
-                ..._todayClasses.map((classItem) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _navigateToFaceRegistration(classItem);
-                    },
-                    icon: const Icon(Icons.camera_enhance, size: 16),
-                    label: Text('Thêm ảnh - ${classItem.name}'),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.primary),
-                      foregroundColor: AppColors.primary,
-                    ),
-                  ),
-                )),
-              ],
             ],
           ),
           actions: [
@@ -576,42 +594,110 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome Section
+          // Welcome Section - Material 3 Improved
           Container(
-            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Xin chào,',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _currentUser!.fullName,
-                  style: AppTextStyles.heading2.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _currentUser!.userCode,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 28,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Text content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chào buổi sáng,',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _currentUser!.fullName,
+                            style: AppTextStyles.heading2.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _currentUser!.userCode,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Notification bell
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -721,66 +807,179 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Thao tác nhanh',
-          style: AppTextStyles.heading4.copyWith(
-            color: AppColors.onBackground,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
+        // Section header
         Row(
           children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                icon: Icons.qr_code_scanner,
-                label: 'Quét QR',
-                onTap: () {
-                  if (_todayClasses.isNotEmpty) {
-                    _navigateToQRAttendance(_todayClasses.first);
-                  } else {
-                    _showErrorDialog('Không có lớp học hôm nay');
-                  }
-                },
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.how_to_reg,
+                color: AppColors.primary,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildQuickActionCard(
-                icon: Icons.face,
-                label: 'Face ID',
-                onTap: () {
-                  if (_todayClasses.isNotEmpty) {
-                    _navigateToFaceAttendance(_todayClasses.first);
-                  } else {
-                    _showErrorDialog('Không có lớp học hôm nay');
-                  }
-                },
+            const SizedBox(width: 8),
+            Text(
+              'Điểm danh',
+              style: AppTextStyles.heading4.copyWith(
+                color: AppColors.onBackground,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                icon: Icons.history,
-                label: 'Lịch sử',
-                onTap: () {
-                  _showErrorDialog('Tính năng đang phát triển');
-                },
+        const SizedBox(height: 16),
+
+        // Main attendance button
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 20),
+          child: Material(
+            elevation: 6,
+            borderRadius: BorderRadius.circular(20),
+            shadowColor: AppColors.primary.withValues(alpha: 0.4),
+            child: InkWell(
+              onTap: () {
+                final currentClass = _getCurrentClass();
+                if (currentClass != null) {
+                  _showAttendanceMethodsDialog();
+                } else if (_todayClasses.isNotEmpty) {
+                  _showErrorDialog('Không có lớp học nào đang diễn ra vào thời điểm này');
+                } else {
+                  _showErrorDialog('Không có lớp học để điểm danh hôm nay');
+                }
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primaryVariant,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Animated icon
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.touch_app,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Text content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ĐIỂM DANH NGAY',
+                            style: AppTextStyles.heading3.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _todayClasses.isNotEmpty
+                                ? 'Có ${_todayClasses.length} lớp đang diễn ra'
+                                : 'Không có lịch học hôm nay',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Arrow
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildQuickActionCard(
-                icon: Icons.calendar_today,
-                label: 'Lịch học',
-                onTap: () {
-                  _showErrorDialog('Tính năng đang phát triển');
-                },
-              ),
+          ),
+        ),
+
+        // Quick actions below - 2x2 grid
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.2, // Adjust for equal height cards
+          children: [
+            // Lịch sử điểm danh
+            _buildQuickActionCard(
+              icon: Icons.history,
+              label: 'Lịch sử điểm danh',
+              color: AppColors.info,
+              backgroundColor: AppColors.info.withValues(alpha: 0.1),
+              onTap: () {
+                _showErrorDialog('Tính năng đang phát triển');
+              },
+            ),
+            // Lịch học
+            _buildQuickActionCard(
+              icon: Icons.calendar_month,
+              label: 'Lịch học',
+              color: AppColors.secondary,
+              backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
+              onTap: () {
+                _showErrorDialog('Tính năng đang phát triển');
+              },
+            ),
+            // Thêm 2 ô trống để làm grid 2x2
+            _buildQuickActionCard(
+              icon: Icons.analytics,
+              label: 'Thống kê',
+              color: AppColors.success,
+              backgroundColor: AppColors.success.withValues(alpha: 0.1),
+              onTap: () {
+                _showErrorDialog('Tính năng đang phát triển');
+              },
+            ),
+            _buildQuickActionCard(
+              icon: Icons.notifications,
+              label: 'Thông báo',
+              color: AppColors.warning,
+              backgroundColor: AppColors.warning.withValues(alpha: 0.1),
+              onTap: () {
+                _showErrorDialog('Tính năng đang phát triển');
+              },
             ),
           ],
         ),
@@ -792,33 +991,57 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    Color? color,
+    Color? backgroundColor,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.onSurface.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 32,
-              color: AppColors.primary,
+    final cardColor = color ?? AppColors.primary;
+    final bgColor = backgroundColor ?? AppColors.primary.withValues(alpha: 0.1);
+
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(16),
+      shadowColor: cardColor.withValues(alpha: 0.2),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: cardColor.withValues(alpha: 0.2),
+              width: 1,
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.onSurface,
-                fontWeight: FontWeight.w500,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: cardColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 28,
+                  color: cardColor,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: cardColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -828,53 +1051,126 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Thống kê điểm danh',
-          style: AppTextStyles.heading4.copyWith(
-            color: AppColors.onBackground,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
+        // Section header
         Row(
           children: [
-            Expanded(
-              child: StatCard(
-                title: 'Tỷ lệ điểm danh',
-                value: '${(_stats.attendanceRate * 100).toStringAsFixed(1)}%',
-                icon: Icons.check_circle,
-                iconColor: AppColors.success,
-              ),
+            Icon(
+              Icons.analytics_outlined,
+              color: AppColors.primary,
+              size: 24,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                title: 'Buổi đã tham gia',
-                value: '${_stats.attendedClasses}',
-                icon: Icons.class_,
-                iconColor: AppColors.primary,
+            const SizedBox(width: 8),
+            Text(
+              'Thống kê điểm danh',
+              style: AppTextStyles.heading4.copyWith(
+                color: AppColors.onBackground,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+
+        // Main progress card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tỷ lệ điểm danh',
+                    style: AppTextStyles.heading4.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    '${(_stats.attendanceRate * 100).toStringAsFixed(1)}%',
+                    style: AppTextStyles.heading3.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _getAttendanceColor(_stats.attendanceRate),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Progress bar
+              Container(
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _stats.attendanceRate.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _getAttendanceColor(_stats.attendanceRate),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Text(
+                _getAttendanceMessage(_stats.attendanceRate),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Mini stats grid
         Row(
           children: [
             Expanded(
-              child: StatCard(
-                title: 'Buổi đi muộn',
-                value: '${_stats.lateClasses}',
-                icon: Icons.schedule,
-                iconColor: Colors.orange,
+              child: _buildMiniStatCard(
+                title: 'Đúng giờ',
+                value: '${_stats.attendedClasses}',
+                icon: Icons.check_circle,
+                color: AppColors.success,
+                backgroundColor: AppColors.success.withValues(alpha: 0.1),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: StatCard(
-                title: 'Buổi vắng',
+              child: _buildMiniStatCard(
+                title: 'Đi muộn',
+                value: '${_stats.lateClasses}',
+                icon: Icons.schedule,
+                color: AppColors.warning,
+                backgroundColor: AppColors.warning.withValues(alpha: 0.1),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMiniStatCard(
+                title: 'Vắng mặt',
                 value: '${_stats.missedClasses}',
                 icon: Icons.cancel,
-                iconColor: AppColors.error,
+                color: AppColors.error,
+                backgroundColor: AppColors.error.withValues(alpha: 0.1),
               ),
             ),
           ],
@@ -883,47 +1179,163 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
+  Widget _buildMiniStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTextStyles.heading3.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            title,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getAttendanceColor(double rate) {
+    if (rate >= 0.95) return AppColors.success;
+    if (rate >= 0.85) return AppColors.primary;
+    if (rate >= 0.75) return AppColors.warning;
+    return AppColors.error;
+  }
+
+  String _getAttendanceMessage(double rate) {
+    if (rate >= 0.95) return 'Xuất sắc! Tiếp tục phát huy';
+    if (rate >= 0.85) return 'Tốt! Cố gắng giữ vững';
+    if (rate >= 0.75) return 'Khá! Cần cải thiện hơn';
+    return 'Cần nỗ lực nhiều hơn';
+  }
+
   Widget _buildTodaySchedule() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Lịch học hôm nay',
-          style: AppTextStyles.heading4.copyWith(
-            color: AppColors.onBackground,
-            fontWeight: FontWeight.bold,
-          ),
+        // Section header
+        Row(
+          children: [
+            Icon(
+              Icons.calendar_today_outlined,
+              color: AppColors.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Lịch học hôm nay',
+              style: AppTextStyles.heading4.copyWith(
+                color: AppColors.onBackground,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const Spacer(),
+            if (_todayClasses.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_todayClasses.length} lớp',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+
         if (_todayClasses.isEmpty)
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.onSurface.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
                     Icons.event_available,
-                    size: 48,
-                    color: Colors.grey,
+                    size: 32,
+                    color: AppColors.onSurface.withValues(alpha: 0.5),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Không có lịch học hôm nay',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: Colors.grey,
-                    ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Không có lịch học hôm nay',
+                  style: AppTextStyles.heading4.copyWith(
+                    color: AppColors.onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Thư giãn và chuẩn bị cho ngày mai nhé!',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.onSurface.withValues(alpha: 0.5),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           )
         else
           ..._todayClasses.map((classItem) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: _buildClassCard(classItem),
           )),
       ],
@@ -1367,14 +1779,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ],
                     ),
                   )
-                else if (_todayClasses.isNotEmpty) ...[
-                  // Show class selection for unregistered users
-                  Text(
-                    'Chọn lớp học để đăng ký Face ID:',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  // Đăng ký lần đầu - nổi bật
+                else ...[
+                  // Đăng ký Face ID cho user (không theo lớp)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -1401,39 +1807,57 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        ..._todayClasses.map((classItem) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _navigateToInitialFaceUpload(classItem),
-                              icon: const Icon(Icons.photo_camera_outlined, size: 16),
-                              label: Text('Đăng ký - ${classItem.name}'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                              ),
+                        Text(
+                          'Đăng ký Face ID một lần để sử dụng cho tất cả các lớp học',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              // Sử dụng lớp đầu tiên để đăng ký Face ID (API sẽ gán cho user)
+                              if (_todayClasses.isNotEmpty) {
+                                _navigateToInitialFaceUpload(_todayClasses.first);
+                              } else {
+                                _showErrorDialog('Không có lớp học để đăng ký Face ID');
+                              }
+                            },
+                            icon: const Icon(Icons.camera_enhance, size: 16),
+                            label: const Text('Đăng ký Face ID'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
-                        )),
+                        ),
                       ],
                     ),
                   ),
-                ] else if (_isFaceRegistered)
+                const SizedBox(height: 16),
+                if (_faceRegistrationStatus != null)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade200),
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.verified, color: Colors.green, size: 20),
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green.shade600,
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -1487,6 +1911,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     ),
                   ),
               ],
+            ],
             ),
           ),
           const SizedBox(height: 20),
@@ -1575,6 +2000,24 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               ),
             ),
           ),
+          // PIN option
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _showPINDialog(classItem);
+              },
+              icon: const Icon(Icons.dialpad),
+              label: const Text('Điểm danh bằng PIN'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
           // Cancel button
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1623,5 +2066,582 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ],
       ),
     );
+  }
+
+  // Method to find current class based on current time
+  Class? _getCurrentClass() {
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+    final currentDay = now.weekday;
+
+    debugPrint('🔍 Looking for current class:');
+    debugPrint('   Current day: ${_getDayName(currentDay)} ($currentDay)');
+    debugPrint('   Current time: ${now.hour}:${now.minute.toString().padLeft(2, '0')} ($currentMinutes minutes)');
+    debugPrint('   Today classes count: ${_todayClasses.length}');
+
+    if (_todayClasses.isEmpty) {
+      debugPrint('   ❌ No classes today');
+      return null;
+    }
+
+    for (Class classItem in _todayClasses) {
+      debugPrint('   Checking class: ${classItem.name}');
+      debugPrint('     - Schedule: ${classItem.schedule}');
+
+      // Parse schedule to find time patterns
+      if (_isCurrentClassInSchedule(classItem.schedule, currentMinutes)) {
+        debugPrint('✅ Found current class: ${classItem.name}');
+        return classItem;
+      }
+    }
+
+    debugPrint('❌ No current class found');
+    return null;
+  }
+
+  // Method to get day name
+  String _getDayName(int day) {
+    switch (day) {
+      case 1: return 'Thứ Hai';
+      case 2: return 'Thứ Ba';
+      case 3: return 'Thứ Tư';
+      case 4: return 'Thứ Năm';
+      case 5: return 'Thứ Sáu';
+      case 6: return 'Thứ Bảy';
+      case 7: return 'Chủ Nhật';
+      default: return 'Unknown';
+    }
+  }
+
+  // Method to check if current time matches class schedule
+  bool _isCurrentClassInSchedule(String schedule, int currentMinutes) {
+    // Check for morning classes (7:00 - 9:00 = 420 - 540 minutes)
+    if (schedule.contains('7:00') && currentMinutes >= 420 && currentMinutes <= 540) {
+      return true;
+    }
+    // Check for afternoon classes (14:00 - 16:00 = 840 - 960 minutes)
+    if (schedule.contains('14:00') && currentMinutes >= 840 && currentMinutes <= 960) {
+      return true;
+    }
+    // Check for other common time slots
+    if (schedule.contains('9:30') && currentMinutes >= 570 && currentMinutes <= 690) {
+      return true;
+    }
+    if (schedule.contains('16:30') && currentMinutes >= 990 && currentMinutes <= 1110) {
+      return true;
+    }
+
+    return false;
+  }
+
+  
+  // Method to get current class name for display
+  String _getCurrentClassName() {
+    final currentClass = _getCurrentClass();
+    if (currentClass != null) {
+      return '${currentClass.name} (Đang diễn ra)';
+    } else if (_todayClasses.isNotEmpty) {
+      return 'Không có lớp học đang diễn ra';
+    } else {
+      return 'Không có lớp học hôm nay';
+    }
+  }
+
+  // Method to show attendance methods dialog
+  void _showAttendanceMethodsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+        ),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.how_to_reg,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chọn phương thức điểm danh',
+                            style: AppTextStyles.heading3.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            _getCurrentClassName(),
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Attendance methods
+                Column(
+                  children: [
+                    _buildAttendanceMethodCard(
+                      icon: Icons.face,
+                      title: 'Face ID',
+                      subtitle: 'Sử dụng khuôn mặt để điểm danh nhanh chóng',
+                      color: AppColors.primary,
+                      gradientColors: [AppColors.primary, AppColors.primaryVariant],
+                      onTap: () {
+                        Navigator.pop(context);
+                        final currentClass = _getCurrentClass();
+                        if (currentClass != null) {
+                          _navigateToFaceAttendance(currentClass);
+                        } else {
+                          _showErrorDialog('Không có lớp học đang diễn ra để điểm danh');
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildAttendanceMethodCard(
+                      icon: Icons.qr_code_scanner,
+                      title: 'Quét mã QR',
+                      subtitle: 'Quét mã QR từ giảng viên để điểm danh',
+                      color: AppColors.success,
+                      gradientColors: [AppColors.success, AppColors.success.withValues(alpha: 0.8)],
+                      onTap: () {
+                        Navigator.pop(context);
+                        final currentClass = _getCurrentClass();
+                        if (currentClass != null) {
+                          _navigateToQRAttendance(currentClass);
+                        } else {
+                          _showErrorDialog('Không có lớp học đang diễn ra để điểm danh');
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildAttendanceMethodCard(
+                      icon: Icons.dialpad,
+                      title: 'Mã PIN',
+                      subtitle: 'Nhập mã PIN 4 chữ số để điểm danh',
+                      color: AppColors.warning,
+                      gradientColors: [AppColors.warning, AppColors.warning.withValues(alpha: 0.8)],
+                      onTap: () {
+                        Navigator.pop(context);
+                        final currentClass = _getCurrentClass();
+                        if (currentClass != null) {
+                          _showPINDialog(currentClass);
+                        } else {
+                          _showErrorDialog('Không có lớp học đang diễn ra để điểm danh');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Cancel button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: AppColors.onSurface.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'Hủy',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // New method for building attendance method cards
+  Widget _buildAttendanceMethodCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required List<Color> gradientColors,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(16),
+      shadowColor: color.withValues(alpha: 0.3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withValues(alpha: 0.08),
+                color.withValues(alpha: 0.02),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradientColors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.heading4.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  color: color,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // PIN dialog method
+  void _showPINDialog(Class classItem) {
+    String enteredPIN = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.dialpad,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Nhập mã PIN',
+                style: AppTextStyles.heading4.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Nhập mã PIN 4 chữ số để điểm danh',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.onSurface.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+
+              // PIN display
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(4, (index) {
+                    return Container(
+                      width: 24,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.divider,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          index < enteredPIN.length ? enteredPIN[index] : '',
+                          style: AppTextStyles.heading3.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Number pad
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: [
+                  ...List.generate(9, (index) {
+                    final number = (index + 1).toString();
+                    return _buildPINButton(
+                      number: number,
+                      onPressed: () {
+                        if (enteredPIN.length < 4) {
+                          setState(() {
+                            enteredPIN += number;
+                          });
+                        }
+                      },
+                    );
+                  }),
+                  _buildPINButton(
+                    number: 'CLR',
+                    onPressed: () {
+                      setState(() {
+                        enteredPIN = '';
+                      });
+                    },
+                    backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                    textColor: AppColors.error,
+                  ),
+                  _buildPINButton(
+                    number: '0',
+                    onPressed: () {
+                      if (enteredPIN.length < 4) {
+                        setState(() {
+                          enteredPIN += '0';
+                        });
+                      }
+                    },
+                  ),
+                  _buildPINButton(
+                    number: '⌫',
+                    onPressed: () {
+                      if (enteredPIN.isNotEmpty) {
+                        setState(() {
+                          enteredPIN = enteredPIN.substring(0, enteredPIN.length - 1);
+                        });
+                      }
+                    },
+                    backgroundColor: AppColors.background,
+                    textColor: AppColors.onSurface,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Hủy',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            if (enteredPIN.length == 4)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _processPINAttendance(classItem, enteredPIN);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(
+                  'Xác nhận',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPINButton({
+    required String number,
+    required VoidCallback onPressed,
+    Color? backgroundColor,
+    Color? textColor,
+  }) {
+    final bgColor = backgroundColor ?? AppColors.primary;
+    final txtColor = textColor ?? Colors.white;
+
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: AppTextStyles.heading3.copyWith(
+                fontWeight: FontWeight.w700,
+                color: txtColor,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _processPINAttendance(Class classItem, String pin) {
+    // Mock PIN validation - in real app, this would validate against server
+    if (pin == '1234') {
+      _showAttendanceSuccessDialog(AttendanceRecord(
+        id: 'pin_${DateTime.now().millisecondsSinceEpoch}',
+        studentId: _currentUser!.id,
+        studentName: _currentUser!.fullName,
+        classId: classItem.id,
+        className: classItem.name,
+        sessionId: 'session_${DateTime.now().millisecondsSinceEpoch}',
+        checkInTime: DateTime.now(),
+        status: 'on_time',
+        method: 'pin',
+        confidence: 1.0,
+      ));
+    } else {
+      _showErrorDialog('Mã PIN không chính xác. Vui lòng thử lại.');
+    }
   }
 }
