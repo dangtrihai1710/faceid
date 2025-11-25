@@ -1,6 +1,7 @@
 class ClassModel {
   final String id;
   final String name;
+  final String classType;  // "academic" or "subject"
   final String subject;
   final String instructor;
   final DateTime startTime;
@@ -16,10 +17,21 @@ class ClassModel {
   final int? studentCount;
   final int? attendanceCount;
   final String? status;
+  final List<String>? studentIds; // List of enrolled student IDs
+  final int? maxStudents; // Maximum capacity
+
+  // Academic year specific fields
+  final int? academicYear;
+  final String? classCode;
+  final int? classSequence;
+
+  // Schedule information
+  final Map<String, dynamic>? schedule;
 
   ClassModel({
     required this.id,
     required this.name,
+    this.classType = 'subject',
     required this.subject,
     required this.instructor,
     required this.startTime,
@@ -33,29 +45,46 @@ class ClassModel {
     this.studentCount,
     this.attendanceCount,
     this.status,
+    this.studentIds,
+    this.maxStudents,
+    this.academicYear,
+    this.classCode,
+    this.classSequence,
+      this.schedule,
   });
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
     return ClassModel(
-      id: json['id']?.toString() ?? '',
+      id: json['classId']?.toString() ?? json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
-      subject: json['subject']?.toString() ?? '',
-      instructor: json['instructor']?.toString() ?? '',
-      startTime: DateTime.tryParse(json['startTime'].toString()) ?? DateTime.now(),
-      endTime: DateTime.tryParse(json['endTime'].toString()) ?? DateTime.now(),
+      classType: json['classType']?.toString() ?? json['class_type']?.toString() ?? 'subject',
+      subject: json['subject']?.toString() ?? json['subjectCode']?.toString() ?? json['subject_code']?.toString() ?? '',
+      instructor: json['instructor']?.toString() ?? json['instructorId']?.toString() ?? json['instructor_id']?.toString() ?? '',
+      startTime: json['startTime'] != null
+          ? (DateTime.tryParse(json['startTime'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+      endTime: json['endTime'] != null
+          ? (DateTime.tryParse(json['endTime'].toString()) ?? DateTime.now().add(const Duration(hours: 2)))
+          : DateTime.now().add(const Duration(hours: 2)),
       room: json['room']?.toString() ?? '',
       description: json['description']?.toString(),
-      isAttendanceOpen: json['isAttendanceOpen'] ?? false,
+      isAttendanceOpen: json['isAttendanceOpen'] ?? json['is_attendance_open'] ?? false,
       attendanceOpenTime: json['attendanceOpenTime'] != null
           ? DateTime.tryParse(json['attendanceOpenTime'].toString())
           : null,
       attendanceCloseTime: json['attendanceCloseTime'] != null
           ? DateTime.tryParse(json['attendanceCloseTime'].toString())
           : null,
-      instructorName: json['instructorName']?.toString(),
-      studentCount: json['studentCount'] as int?,
+      instructorName: json['instructorName']?.toString() ?? json['instructor_name']?.toString(),
+      studentCount: json['studentCount'] ?? json['currentStudents'] as int?,
       attendanceCount: json['attendanceCount'] as int?,
       status: json['status']?.toString(),
+      studentIds: (json['studentIds'] as List<dynamic>? ?? json['student_ids'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      maxStudents: json['maxStudents'] as int?,
+      academicYear: json['academicYear'] ?? json['academic_year'] as int?,
+      classCode: json['classCode']?.toString() ?? json['class_code']?.toString(),
+      classSequence: json['classSequence'] ?? json['class_sequence'] as int?,
+      schedule: json['schedule'] as Map<String, dynamic>?,
     );
   }
 
@@ -63,6 +92,7 @@ class ClassModel {
     return {
       'id': id,
       'name': name,
+      'classType': classType,
       'subject': subject,
       'instructor': instructor,
       'startTime': startTime.toIso8601String(),
@@ -76,6 +106,12 @@ class ClassModel {
       'studentCount': studentCount,
       'attendanceCount': attendanceCount,
       'status': status,
+      'studentIds': studentIds,
+      'maxStudents': maxStudents,
+      'academicYear': academicYear,
+      'classCode': classCode,
+      'classSequence': classSequence,
+      'schedule': schedule,
     };
   }
 
@@ -96,6 +132,10 @@ class ClassModel {
   }
 
   bool get isCompleted {
+    return endTime.isBefore(DateTime.now());
+  }
+
+  bool get isPast {
     return endTime.isBefore(DateTime.now());
   }
 
@@ -134,6 +174,7 @@ class ClassModel {
   ClassModel copyWith({
     String? id,
     String? name,
+    String? classType,
     String? subject,
     String? instructor,
     DateTime? startTime,
@@ -147,10 +188,17 @@ class ClassModel {
     int? studentCount,
     int? attendanceCount,
     String? status,
+    List<String>? studentIds,
+    int? maxStudents,
+    int? academicYear,
+    String? classCode,
+    int? classSequence,
+    Map<String, dynamic>? schedule,
   }) {
     return ClassModel(
       id: id ?? this.id,
       name: name ?? this.name,
+      classType: classType ?? this.classType,
       subject: subject ?? this.subject,
       instructor: instructor ?? this.instructor,
       startTime: startTime ?? this.startTime,
@@ -164,6 +212,12 @@ class ClassModel {
       studentCount: studentCount ?? this.studentCount,
       attendanceCount: attendanceCount ?? this.attendanceCount,
       status: status ?? this.status,
+      studentIds: studentIds ?? this.studentIds,
+      maxStudents: maxStudents ?? this.maxStudents,
+      academicYear: academicYear ?? this.academicYear,
+      classCode: classCode ?? this.classCode,
+      classSequence: classSequence ?? this.classSequence,
+      schedule: schedule ?? this.schedule,
     );
   }
 
@@ -177,8 +231,27 @@ class ClassModel {
   int get displayAttendanceCount => attendanceCount ?? 0;
   String get displayStatus => status ?? (isCompleted ? 'completed' : isOngoing ? 'ongoing' : 'upcoming');
 
+  // Two-tier class structure getters
+  String get displayName {
+    if (classType == 'academic') {
+      return name;  // Already in format like "25ABC1"
+    } else {
+      return '$name - $subject';  // e.g., "Lập trình - LAP101"
+    }
+  }
+
+  bool get isAcademicClass => classType == 'academic';
+  bool get isSubjectClass => classType == 'subject';
+
+  String get formattedClassName {
+    if (isAcademicClass && academicYear != null && classCode != null && classSequence != null) {
+      return '$academicYear$classCode$classSequence';  // e.g., "25ABC1"
+    }
+    return name;
+  }
+
   @override
   String toString() {
-    return 'ClassModel(id: $id, name: $name, subject: $subject, attendanceOpen: $isAttendanceOpen)';
+    return 'ClassModel(id: $id, name: $name, classType: $classType, subject: $subject, attendanceOpen: $isAttendanceOpen)';
   }
 }

@@ -1,25 +1,31 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import 'api_service.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
   static const String _usersKey = 'registered_users';
 
-  // Demo accounts for testing
+  // Demo accounts for testing (matching backend passwords)
   static final Map<String, String> _demoAccounts = {
-    'admin': 'admin123',
-    'user': 'user123',
-    'test': 'test123',
+    'AD001': 'admin123',        // Admin
+    'GV001': 'instructor123',   // Instructor A
+    'GV002': 'instructor123',   // Instructor B
+    'SV001': 'student123',      // Student 1
+    'SV002': 'student123',      // Student 2
+    '1': 'student123',          // Legacy Student 1
+    '2': 'student123',          // Legacy Student 2
+    '3': 'student123',          // Legacy Student 3
+    '4': 'student123',          // Legacy Student 4
+    '5': 'student123',          // Legacy Student 5
   };
 
-  // Hash password using SHA-256
+  // Simple password encoding (temporary fix)
   static String _hashPassword(String password) {
-    var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
+    // Simple encoding without crypto dependency
+    return 'encoded_${password.hashCode}_$password';
   }
 
   // Save authentication state
@@ -33,6 +39,11 @@ class AuthService {
       print('❌ Error saving auth state: $e');
       throw Exception('Lỗi khi lưu trạng thái đăng nhập');
     }
+  }
+
+  // Public method to save auth state (for external use)
+  static Future<void> saveAuthState(User user) async {
+    await _saveAuthState(user);
   }
 
   // Clear authentication state
@@ -133,6 +144,9 @@ class AuthService {
       // Save authentication state
       await _saveAuthState(user);
 
+      // Also set token in ApiService for CRUD operations
+      ApiService.setToken(user.token);
+
       print('✅ Registration successful for: $userId');
       return user;
     } catch (e) {
@@ -154,13 +168,17 @@ class AuthService {
           id: 'demo_${userId}_id',
           userId: userId,
           email: '${userId}@demo.com',
-          fullName: userId == 'admin' ? 'Admin Demo' : 'User Demo',
+          fullName: userId == 'AD001' || userId == 'admin' ? 'Admin Demo' : 'User Demo',
           token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
-          role: role,
+          role: userId == 'AD001' || userId == 'admin' ? 'admin' : role,
           createdAt: DateTime.now(),
         );
 
         await _saveAuthState(user);
+
+        // Also set token in ApiService for CRUD operations
+        ApiService.setToken(user.token);
+
         return user;
       }
 
@@ -196,6 +214,9 @@ class AuthService {
       // Save authentication state
       await _saveAuthState(user);
 
+      // Also set token in ApiService for CRUD operations
+      ApiService.setToken(user.token);
+
       print('✅ Login successful for: $userId');
       return user;
     } catch (e) {
@@ -208,6 +229,10 @@ class AuthService {
   Future<void> logout() async {
     try {
       await _clearAuthState();
+
+      // Clear token from ApiService
+      ApiService.setToken('');
+
       print('✅ Logout successful');
     } catch (e) {
       print('❌ Logout error: $e');
@@ -227,6 +252,12 @@ class AuthService {
 
       final token = prefs.getString(_tokenKey);
       final isLoggedIn = token != null && token.isNotEmpty;
+
+      // Set token in ApiService if logged in
+      if (isLoggedIn && token != null) {
+        ApiService.setToken(token);
+      }
+
       print('Login status check: $isLoggedIn');
       return isLoggedIn;
     } catch (e) {
@@ -263,10 +294,11 @@ class AuthService {
     try {
       print('🔄 Creating demo users for mobile testing...');
 
-      await saveUserCredentials('student1', '123456', 'student');
-      await saveUserCredentials('student2', '123456', 'student');
-      await saveUserCredentials('teacher1', '123456', 'instructor');
-      await saveUserCredentials('teacher2', '123456', 'instructor');
+      await saveUserCredentials('AD001', 'admin123', 'admin');
+      await saveUserCredentials('SV001', 'student123', 'student');
+      await saveUserCredentials('SV002', 'student123', 'student');
+      await saveUserCredentials('GV001', 'instructor123', 'instructor');
+      await saveUserCredentials('GV002', 'instructor123', 'instructor');
 
       print('✅ Demo users created successfully');
     } catch (e) {

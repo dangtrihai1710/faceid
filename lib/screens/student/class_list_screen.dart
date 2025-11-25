@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../services/class_service.dart';
+import '../../services/api_service.dart';
+import 'qr_attendance_screen.dart';
+import 'package:flutter/services.dart';
 
 class ClassListScreen extends StatefulWidget {
   final User currentUser;
@@ -17,97 +19,234 @@ class ClassListScreen extends StatefulWidget {
 
 class _ClassListScreenState extends State<ClassListScreen> {
   List<ClassModel> _allClasses = [];
+  List<ClassModel> _filteredClasses = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadClasses();
+    _searchController.addListener(_filterClasses);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadClasses() async {
     try {
-      final classes = await ClassService.getUpcomingClasses();
-      setState(() {
-        _allClasses = classes;
-        _isLoading = false;
-      });
+      final response = await ApiService.makeAuthenticatedRequest(
+        'GET',
+        '/api/v1/classes/?per_page=100',
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final classesData = response['data'] as List;
+        final allClasses = classesData.map((json) => ClassModel.fromJson(json)).toList();
+
+        // Filter classes that the student is enrolled in
+        final enrolledClasses = _filterEnrolledClasses(allClasses);
+
+        setState(() {
+          _allClasses = enrolledClasses;
+          _filteredClasses = enrolledClasses;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi tải danh sách môn học: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
+  }
+
+  List<ClassModel> _filterEnrolledClasses(List<ClassModel> classes) {
+    // Hiển thị tất cả các lớp học cho sinh viên
+    // Trong triển khai thực tế, bạn sẽ lọc theo các lớp mà sinh viên đã đăng ký
+    return classes;
+  }
+
+  void _filterClasses() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    setState(() {
+      if (query.isEmpty) {
+        _filteredClasses = _allClasses;
+      } else {
+        _filteredClasses = _allClasses.where((classModel) {
+          return classModel.name.toLowerCase().contains(query) ||
+                 classModel.subject.toLowerCase().contains(query) ||
+                 classModel.instructor.toLowerCase().contains(query) ||
+                 classModel.room.toLowerCase().contains(query) ||
+                 classModel.timeRange.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  Future<void> _refreshClasses() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    await _loadClasses();
+
+    setState(() {
+      _isRefreshing = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Danh sách môn học'),
-        backgroundColor: Colors.orange[700],
+        title: const Text('Lớp học của tôi'),
+        backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          if (_allClasses.isNotEmpty)
+            IconButton(
+              onPressed: _showFilterDialog,
+              icon: const Icon(Icons.filter_list),
+              tooltip: 'Bộ lọc',
+            ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Đang tải danh sách môn học...'),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadClasses,
-              child: _allClasses.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.schedule,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Không có môn học nào',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: _isLoading
+                ? _buildLoadingState()
+                : _isRefreshing
+                    ? _buildRefreshingState()
+                    : _filteredClasses.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _refreshClasses,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _filteredClasses.length,
+                              itemBuilder: (context, index) {
+                                return _buildClassCard(_filteredClasses[index]);
+                              },
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _allClasses.length,
-                      itemBuilder: (context, index) {
-                        final classModel = _allClasses[index];
-                        return _buildClassCard(classModel);
-                      },
-                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          hintText: 'Tìm kiếm lớp học, môn học, giảng viên...',
+          prefixIcon: Icon(Icons.search, color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Đang tải danh sách lớp học...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRefreshingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Đang làm mới...'),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bộ lọc lớp học'),
+        content: const Text('Chức năng lọc nâng cao sẽ sớm có mặt!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.school_outlined,
+            size: 80,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Chưa có lớp học nào',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey,
             ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildClassCard(ClassModel classModel) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return InkWell(
+      onTap: () => _showClassDetails(classModel),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -115,113 +254,72 @@ class _ClassListScreenState extends State<ClassListScreen> {
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _getClassStatusColor(classModel).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      _getClassStatusIcon(classModel),
-                      color: _getClassStatusColor(classModel),
-                      size: 24,
+                  Expanded(
+                    child: Text(
+                      classModel.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          classModel.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          classModel.subject,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      classModel.subject,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Class Details
-              _buildDetailRow('Giảng viên', classModel.instructor),
-              _buildDetailRow('Phòng học', classModel.room),
-              _buildDetailRow('Thời gian', classModel.timeRange),
-
-              if (classModel.description != null && classModel.description!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  classModel.description!,
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 12),
-
-              // Status and Action
+              _buildInfoRow('Giảng viên', classModel.instructor),
+              _buildInfoRow('Phòng học', classModel.room),
+              _buildInfoRow('Thời gian', classModel.timeRange),
+              const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getClassStatusColor(classModel).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      classModel.statusText,
-                      style: TextStyle(
-                        color: _getClassStatusColor(classModel),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showClassDetails(classModel),
+                      icon: const Icon(Icons.info_outline, size: 18),
+                      label: const Text('Xem chi tiết'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[50],
+                        foregroundColor: Colors.blue[700],
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
-
-                  // Action Buttons
-                  Row(
-                    children: [
-                      if (classModel.isToday)
-                        IconButton(
-                          onPressed: () {
-                            _showClassDetails(classModel);
-                          },
-                          icon: Icon(
-                            Icons.info_outline,
-                            color: Colors.blue[700],
-                          ),
-                          tooltip: 'Xem chi tiết',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _navigateToAttendance(classModel),
+                      icon: const Icon(Icons.qr_code_scanner, size: 18),
+                      label: const Text('Điểm danh'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[50],
+                        foregroundColor: Colors.green[700],
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      if (classModel.isAttendanceOpen)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Đang mở điểm danh',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                    ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -232,119 +330,74 @@ class _ClassListScreenState extends State<ClassListScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(
-            Icons.label,
-            size: 14,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label:',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[800],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getClassStatusColor(ClassModel classModel) {
-    if (classModel.isAttendanceOpen) return Colors.green;
-    if (classModel.isOngoing) return Colors.blue;
-    if (classModel.isUpcoming && classModel.isToday) return Colors.orange;
-    if (classModel.isUpcoming) return Colors.purple;
-    return Colors.grey;
-  }
-
-  IconData _getClassStatusIcon(ClassModel classModel) {
-    if (classModel.isAttendanceOpen) return Icons.how_to_reg;
-    if (classModel.isOngoing) return Icons.play_circle;
-    if (classModel.isUpcoming && classModel.isToday) return Icons.schedule;
-    if (classModel.isUpcoming) return Icons.event;
-    return Icons.check_circle;
-  }
-
   void _showClassDetails(ClassModel classModel) {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 40,
               height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 20),
-
-            Text(
-              classModel.name,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            _buildDetailModalRow('Môn học', classModel.subject),
-            _buildDetailModalRow('Giảng viên', classModel.instructor),
-            _buildDetailModalRow('Phòng học', classModel.room),
-            _buildDetailModalRow('Thời gian', classModel.timeRange),
-            _buildDetailModalRow('Trạng thái', classModel.statusText),
-
-            if (classModel.description != null && classModel.description!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Text(
-                'Mô tả:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Chi tiết lớp học',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDetailCard(Icons.class_outlined, 'Tên lớp học', classModel.name),
+                    _buildDetailCard(Icons.book_outlined, 'Môn học', classModel.subject),
+                    _buildDetailCard(Icons.person_outline, 'Giảng viên', classModel.instructor),
+                    _buildDetailCard(Icons.location_on_outlined, 'Phòng học', classModel.room),
+                    _buildDetailCard(Icons.schedule_outlined, 'Thời gian', classModel.timeRange),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _navigateToAttendance(classModel);
+                        },
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Điểm danh ngay'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(classModel.description!),
-            ],
-
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text('Đóng'),
               ),
             ),
           ],
@@ -353,25 +406,74 @@ class _ClassListScreenState extends State<ClassListScreen> {
     );
   }
 
-  Widget _buildDetailModalRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+  Widget _buildDetailCard(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
+          Icon(icon, color: Colors.blue[600], size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToAttendance(ClassModel classModel) {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => QRAttendanceScreen(currentUser: widget.currentUser),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
             ),
           ),
           Expanded(
             child: Text(
               value,
               style: const TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),

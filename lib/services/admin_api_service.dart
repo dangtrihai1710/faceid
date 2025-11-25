@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/class_model.dart';
-import '../models/attendance_model.dart';
 import 'auth_service.dart';
 import 'api_service.dart';
 
@@ -20,7 +19,7 @@ class AdminApiService {
       if (!adminExists) {
         // Create default admin account locally
         final adminCredentials = {
-          'userId': 'admin',
+          'userId': 'AD001',
           'password': 'admin123',
           'fullName': 'System Administrator',
           'email': 'admin@faceid.com',
@@ -29,7 +28,7 @@ class AdminApiService {
         };
 
         await prefs.setString(_adminCredentials, jsonEncode(adminCredentials));
-        print('Admin account initialized: admin/admin123');
+        print('Admin account initialized: AD001/admin123');
       }
     } catch (e) {
       print('Error initializing admin: $e');
@@ -213,40 +212,29 @@ class AdminApiService {
     }
   }
 
-  // Get attendance records - Try FastAPI first, fallback to demo data
-  static Future<List<AttendanceModel>> getAttendanceRecords(String token, {String? classId}) async {
+  // Get attendance records - simplified for basic interface
+  static Future<List<Map<String, dynamic>>> getAttendanceRecords(String token, {String? classId}) async {
     try {
-      print('📊 Getting attendance records from FastAPI...');
+      print('📊 Getting attendance records...');
 
-      // Set token for API calls
-      ApiService.setToken(token);
-
-      // Try to get attendance from FastAPI
-      final apiAttendance = await ApiService.getAttendanceRecords(token, classId: classId);
-
-      if (apiAttendance.isNotEmpty) {
-        print('✅ Got ${apiAttendance.length} attendance records from FastAPI');
-        return apiAttendance;
-      }
-
-      print('⚠️ FastAPI attendance failed, using demo data...');
-
-      // Fallback to demo data
+      // Return demo data for simplified interface
       return [
-        AttendanceModel(
-          id: 'attend_001',
-          classId: 'class_001',
-          userId: 'SV001',
-          checkInTime: DateTime.now().subtract(Duration(days: 1, hours: 2)),
-          status: AttendanceStatus.present,
-        ),
-        AttendanceModel(
-          id: 'attend_002',
-          classId: 'class_001',
-          userId: 'SV002',
-          checkInTime: DateTime.now().subtract(Duration(days: 1)),
-          status: AttendanceStatus.absent,
-        ),
+        {
+          'id': 'attend_001',
+          'classId': 'class_001',
+          'userId': 'SV001',
+          'userName': 'Nguyễn Văn Sinh Viên',
+          'checkInTime': DateTime.now().subtract(Duration(days: 1, hours: 2)).toIso8601String(),
+          'status': 'present',
+        },
+        {
+          'id': 'attend_002',
+          'classId': 'class_001',
+          'userId': 'SV002',
+          'userName': 'Trần Thị Sinh Viên',
+          'checkInTime': DateTime.now().subtract(Duration(days: 1)).toIso8601String(),
+          'status': 'absent',
+        },
       ];
     } catch (e) {
       print('❌ Error getting attendance records: $e');
@@ -264,9 +252,11 @@ class AdminApiService {
 
       final today = DateTime.now();
       final todayAttendance = attendance.where((record) {
-        return record.checkInTime.year == today.year &&
-               record.checkInTime.month == today.month &&
-               record.checkInTime.day == today.day;
+        final checkInTime = DateTime.tryParse(record['checkInTime'] ?? '');
+        if (checkInTime == null) return false;
+        return checkInTime.year == today.year &&
+               checkInTime.month == today.month &&
+               checkInTime.day == today.day;
       }).length;
 
       return {

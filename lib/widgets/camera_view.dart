@@ -48,10 +48,12 @@ class _CameraViewState extends State<CameraView> {
 
         _controller = CameraController(frontCamera, ResolutionPreset.medium);
         await _controller!.initialize();
-        widget.onControllerReady(_controller!);
+        if (mounted) {
+          widget.onControllerReady(_controller);
+        }
         if (mounted) setState(() => _isInitialized = true);
       } catch (e) {
-        print('Mobile camera initialization failed: $e');
+        debugPrint('Mobile camera initialization failed: $e');
         if (mounted) {
           setState(() {
             _hasError = true;
@@ -78,7 +80,9 @@ class _CameraViewState extends State<CameraView> {
               throw Exception('Camera initialization timeout');
             },
           );
-          widget.onControllerReady(_controller!);
+          if (mounted) {
+            widget.onControllerReady(_controller);
+          }
           if (mounted) setState(() => _isInitialized = true);
         } else {
           if (mounted) {
@@ -90,7 +94,7 @@ class _CameraViewState extends State<CameraView> {
           widget.onControllerReady(null);
         }
       } catch (e) {
-        print('Web camera initialization failed: $e');
+        debugPrint('Web camera initialization failed: $e');
         if (mounted) {
           setState(() {
             _hasError = true;
@@ -159,7 +163,16 @@ class _CameraViewState extends State<CameraView> {
       );
     }
 
-    return CameraPreview(_controller!);
+    if (_controller != null) {
+      return CameraPreview(_controller!);
+    } else {
+      return Container(
+        color: Colors.grey[100],
+        child: const Center(
+          child: Text('Camera không khả dụng'),
+        ),
+      );
+    }
   }
 
   @override
