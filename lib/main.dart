@@ -9,7 +9,6 @@ import 'screens/login/login_screen_api.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/smart_register_screen.dart';
 import 'screens/home/student_home_screen.dart';
-import 'screens/result_screen.dart';
 import 'widgets/camera_view.dart';
 
 // Auth service from origin/HoangHai branch
@@ -199,7 +198,6 @@ class MyApp extends StatelessWidget {
           final args = ModalRoute.of(context)?.settings.arguments;
           return CameraView(classItem: args);
         },
-        '/result': (context) => const ResultScreen(),
       },
       onGenerateRoute: (settings) {
         // Handle dynamic routes with arguments
@@ -208,11 +206,6 @@ class MyApp extends StatelessWidget {
             final args = settings.arguments;
             return MaterialPageRoute(
               builder: (context) => CameraView(classItem: args),
-              settings: settings,
-            );
-          case '/result':
-            return MaterialPageRoute(
-              builder: (context) => const ResultScreen(),
               settings: settings,
             );
           default:
