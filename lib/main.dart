@@ -1,21 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
+
+// UI imports from HEAD branch (better UI)
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_text_styles.dart';
 import 'screens/login/login_screen_api.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/smart_register_screen.dart';
 import 'screens/home/student_home_screen.dart';
-// import 'screens/home/teacher_home_screen.dart'; // Removed - using real data
 import 'screens/result_screen.dart';
-// import 'screens/schedule/schedule_screen.dart'; // Removed - using real data
-// import 'screens/profile/profile_screen.dart'; // Removed - using real data
 import 'widgets/camera_view.dart';
+
+// Auth service from origin/HoangHai branch
+import 'services/auth_service.dart';
+import 'models/user.dart';
+
+List<CameraDescription>? cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Mock data is already initialized through static variables
-  // In a real app, this would load from a database or API
+  // Initialize cameras for all platforms with error handling
+  try {
+    cameras = await availableCameras();
+    print('✅ Available cameras: ${cameras?.length ?? 0}');
+  } catch (e) {
+    print('⚠️ Camera initialization failed: $e');
+    cameras = [];
+  }
+
+  // Set preferred device orientation for mobile
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Create demo users for testing
+  await AuthService.createDemoUsers();
 
   runApp(const MyApp());
 }
@@ -28,6 +50,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'FaceID Attendance',
       debugShowCheckedModeBanner: false,
+      // Enhanced theme from HEAD branch
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -164,20 +187,19 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+      // Routes from HEAD branch with AuthWrapper from origin/HoangHai
+      home: const AuthWrapper(),
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreenApi(),
         '/register': (context) => const RegisterScreen(),
         '/smart_register': (context) => const SmartRegisterScreen(),
         '/student_home': (context) => const StudentHomeScreen(),
-        // '/teacher_home': (context) => const TeacherHomeScreen(), // Removed - using real data
         '/camera': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
           return CameraView(classItem: args);
         },
         '/result': (context) => const ResultScreen(),
-        // '/schedule': (context) => const ScheduleScreen(), // Removed - using real data
-        // '/profile': (context) => const ProfileScreen(), // Removed - using real data
       },
       onGenerateRoute: (settings) {
         // Handle dynamic routes with arguments
@@ -198,5 +220,58 @@ class MyApp extends StatelessWidget {
         }
       },
     );
+  }
+}
+
+// AuthWrapper from origin/HoangHai branch
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  User? _currentUser;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    try {
+      final authService = AuthService();
+      final user = await authService.getCurrentUser();
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _currentUser = null;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_currentUser == null) {
+      return const LoginScreenApi();
+    }
+
+    // Show home screen based on user role
+    return StudentHomeScreen();
   }
 }
