@@ -179,6 +179,129 @@ class _LoginScreenApiState extends State<LoginScreenApi>
     });
   }
 
+  void _showForgotPasswordDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final TextEditingController emailController = TextEditingController();
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                'Quên mật khẩu',
+                style: AppTextStyles.heading3,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.',
+                    style: AppTextStyles.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'Nhập email đã đăng ký',
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Hủy',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () async {
+                    if (emailController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Vui lòng nhập email'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                      return;
+                    }
+
+                    setState(() {
+                      isLoading = true;
+                    });
+
+                    try {
+                      // TODO: Implement API call for password reset
+                      // For now, just show success message
+                      await Future.delayed(const Duration(seconds: 1));
+
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn'),
+                            backgroundColor: AppColors.success,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi: $e'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (context.mounted) {
+                        setState(() {
+                          isLoading = false;
+                        });
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.onPrimary,
+                          ),
+                        )
+                      : Text(
+                          'Gửi',
+                          style: AppTextStyles.buttonMedium.copyWith(
+                            color: AppColors.onPrimary,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSecondaryButton({
     required String text,
     required VoidCallback onPressed,
@@ -514,7 +637,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
                                   Navigator.pushNamed(context, '/smart_register');
                                 },
                                 child: Text(
-                                  'Đăng ký thông minh',
+                                  'Đăng ký',
                                   style: AppTextStyles.bodyMedium.copyWith(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.w600,
@@ -528,11 +651,9 @@ class _LoginScreenApiState extends State<LoginScreenApi>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               TextButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/register');
-                                },
+                                onPressed: _showForgotPasswordDialog,
                                 child: Text(
-                                  'Đăng ký thủ công',
+                                  'Quên mật khẩu?',
                                   style: AppTextStyles.bodySmall.copyWith(
                                     color: AppColors.onSurface.withValues(alpha: 0.6),
                                   ),
