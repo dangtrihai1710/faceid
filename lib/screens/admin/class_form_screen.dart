@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/class_model.dart';
 import '../../services/api_service.dart';
+import 'dart:developer' as developer;
 
 class ClassFormScreen extends StatefulWidget {
   final ClassModel? classModel;
@@ -72,7 +73,7 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
         }
       });
     } catch (e) {
-      print('Error loading instructors: $e');
+      developer.log('Error loading instructors: $e', name: 'ClassForm.instructors', level: 1000);
     }
   }
 
@@ -189,7 +190,7 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
             children: [
               // Class Type Selection
               DropdownButtonFormField<String>(
-                value: _selectedClassType,
+                initialValue: _selectedClassType,
                 decoration: InputDecoration(
                   labelText: 'Loại lớp học',
                   border: OutlineInputBorder(
@@ -350,7 +351,7 @@ class _ClassFormScreenState extends State<ClassFormScreen> {
               // Instructor Selection
               if (_instructors.isNotEmpty)
                 DropdownButtonFormField<String>(
-                  value: _selectedInstructor,
+                  initialValue: _selectedInstructor,
                   decoration: InputDecoration(
                     labelText: 'Giảng viên',
                     border: OutlineInputBorder(

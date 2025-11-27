@@ -4,6 +4,7 @@ import '../../models/class_model.dart';
 import '../../models/student_model.dart';
 import '../../services/api_service.dart';
 import 'teacher_attendance_code_screen.dart';
+import 'dart:developer' as developer;
 
 class TeacherClassStudentsScreen extends StatefulWidget {
   final User currentUser;
@@ -35,7 +36,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
     setState(() => _isLoading = true);
 
     try {
-      print('🔍 DEBUG: Loading students for class ${widget.classModel.id}');
+      developer.log('🔍 DEBUG: Loading students for class ${widget.classModel.id}', name: 'TeacherClassStudents.load');
 
       // First, get class details with student IDs
       final classResponse = await ApiService.makeAuthenticatedRequest(
@@ -43,7 +44,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
         '/api/v1/classes/${widget.classModel.id}',
       );
 
-      print('🔍 DEBUG: Class response: $classResponse');
+      developer.log('🔍 DEBUG: Class response: $classResponse', name: 'TeacherClassStudents.load');
 
       if (classResponse['success'] != true || classResponse['data'] == null) {
         throw Exception(classResponse['message'] ?? 'Failed to load class details');
@@ -52,24 +53,24 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
       final classData = classResponse['data'];
       final List<dynamic> studentIds = classData['studentIds'] ?? classData['student_ids'] ?? [];
 
-      print('🔍 DEBUG: Found ${studentIds.length} student IDs: $studentIds');
+      developer.log('🔍 DEBUG: Found ${studentIds.length} student IDs: $studentIds', name: 'TeacherClassStudents.load');
 
       // Get detailed information for each student
       final List<StudentModel> students = [];
 
       for (final studentId in studentIds) {
         try {
-          print('🔍 DEBUG: Loading student $studentId');
+          developer.log('🔍 DEBUG: Loading student $studentId', name: 'TeacherClassStudents.load');
           final userResponse = await ApiService.makeAuthenticatedRequest(
             'GET',
             '/api/v1/users/$studentId',
           );
 
-          print('🔍 DEBUG: User response for $studentId: $userResponse');
+          developer.log('🔍 DEBUG: User response for $studentId: $userResponse', name: 'TeacherClassStudents.load');
 
           if (userResponse['success'] == true && userResponse['data'] != null) {
             final userData = userResponse['data'];
-            print('🔍 DEBUG: User data for $studentId: $userData');
+            developer.log('🔍 DEBUG: User data for $studentId: $userData', name: 'TeacherClassStudents.load');
 
             // Convert user data to StudentModel - use studentId as ID
             final student = StudentModel.fromJson({
@@ -83,18 +84,18 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
               'createdAt': userData['createdAt'],
             });
 
-            print('🔍 DEBUG: Created student model: ${student.fullName}');
+            developer.log('🔍 DEBUG: Created student model: ${student.fullName}', name: 'TeacherClassStudents.load');
             students.add(student);
           } else {
-            print('🔍 DEBUG: Failed to load user data for $studentId');
+            developer.log('🔍 DEBUG: Failed to load user data for $studentId', name: 'TeacherClassStudents.load', level: 1000);
           }
         } catch (e) {
-          print('🔍 DEBUG: Error loading student $studentId: $e');
+          developer.log('🔍 DEBUG: Error loading student $studentId: $e', name: 'TeacherClassStudents.load', level: 1000);
           // Continue with other students even if one fails
         }
       }
 
-      print('🔍 DEBUG: Total students created: ${students.length}');
+      developer.log('🔍 DEBUG: Total students created: ${students.length}', name: 'TeacherClassStudents.load');
 
       // Initialize attendance status
       final attendanceMap = <String, String>{};
@@ -102,7 +103,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
         attendanceMap[student.id] = 'absent'; // Default status
       }
 
-      print('🔍 DEBUG: Setting state with ${students.length} students');
+      developer.log('🔍 DEBUG: Setting state with ${students.length} students', name: 'TeacherClassStudents.load');
 
       if (mounted) {
         setState(() {
@@ -111,13 +112,13 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
           _isLoading = false;
         });
 
-        print('🔍 DEBUG: State set. Students count: ${_students.length}');
+        developer.log('🔍 DEBUG: State set. Students count: ${_students.length}', name: 'TeacherClassStudents.load');
         for (final student in _students) {
-          print('🔍 DEBUG: Student in state: ${student.fullName} (${student.id})');
+          developer.log('🔍 DEBUG: Student in state: ${student.fullName} (${student.id})', name: 'TeacherClassStudents.load');
         }
       }
     } catch (e) {
-      print('🔍 DEBUG: Error in _loadStudents: $e');
+      developer.log('🔍 DEBUG: Error in _loadStudents: $e', name: 'TeacherClassStudents.load', level: 1000);
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -131,10 +132,10 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
   }
 
   List<StudentModel> get _filteredStudents {
-    print('🔍 DEBUG: Getting filtered students. Search query: "$_searchQuery", Total students: ${_students.length}');
+    developer.log('🔍 DEBUG: Getting filtered students. Search query: "$_searchQuery", Total students: ${_students.length}', name: 'TeacherClassStudents.filter');
 
     if (_searchQuery.isEmpty) {
-      print('🔍 DEBUG: No search query, returning all ${_students.length} students');
+      developer.log('🔍 DEBUG: No search query, returning all ${_students.length} students', name: 'TeacherClassStudents.filter');
       return _students;
     }
 
@@ -144,7 +145,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
       (student.phone?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false)
     ).toList();
 
-    print('🔍 DEBUG: Filtered to ${filtered.length} students');
+    developer.log('🔍 DEBUG: Filtered to ${filtered.length} students', name: 'TeacherClassStudents.filter');
     return filtered;
   }
 
@@ -211,7 +212,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
     final lateCount = _attendanceStatus.values.where((s) => s == 'late').length;
     final absentCount = _attendanceStatus.values.where((s) => s == 'absent').length;
 
-    print('🔍 DEBUG: Building UI - Loading: $_isLoading, Total students: ${_students.length}, Filtered: ${filteredStudents.length}');
+    developer.log('🔍 DEBUG: Building UI - Loading: $_isLoading, Total students: ${_students.length}, Filtered: ${filteredStudents.length}', name: 'TeacherClassStudents.build');
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -249,7 +250,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -329,24 +330,24 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
             heroTag: "save",
             onPressed: _saveAttendance,
             backgroundColor: Colors.green,
-            child: const Icon(Icons.save),
             tooltip: 'Lưu điểm danh',
+            child: const Icon(Icons.save),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: "qr",
             onPressed: _generateQRCode,
             backgroundColor: Colors.blue,
-            child: const Icon(Icons.qr_code),
             tooltip: 'Tạo QR Code',
+            child: const Icon(Icons.qr_code),
           ),
           const SizedBox(height: 8),
           FloatingActionButton(
             heroTag: "pin",
             onPressed: _generatePINCode,
             backgroundColor: Colors.orange,
-            child: const Icon(Icons.vpn_key),
             tooltip: 'Tạo mã PIN',
+            child: const Icon(Icons.vpn_key),
           ),
         ],
       ),
@@ -427,7 +428,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: _getStatusColor(status).withOpacity(0.1),
+            color: _getStatusColor(status).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -511,9 +512,10 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
 
   void _saveAttendance() async {
     try {
-      // For now, we'll show a success message since the manual attendance
-      // endpoint doesn't exist in the backend yet
-      // TODO: Implement proper attendance saving when backend endpoint is available
+      // Manual attendance saving - placeholder implementation
+      // Note: Backend endpoint for manual attendance needs to be implemented
+      // Note: Proper attendance saving will be implemented when backend endpoint is available
+      // Expected API: ApiService.saveManualAttendance(classId: widget.classModel.id, attendanceData: _students)
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

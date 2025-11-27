@@ -28,6 +28,19 @@ class ClassModel {
   // Schedule information
   final Map<String, dynamic>? schedule;
 
+  // Additional properties for admin screen compatibility
+  final String? courseCode;
+  final bool? isActive;
+  final String? code;
+  final String? instructorId;
+  final String? department;
+  final String? semester;
+  final String? academicYearFull;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
   ClassModel({
     required this.id,
     required this.name,
@@ -50,7 +63,18 @@ class ClassModel {
     this.academicYear,
     this.classCode,
     this.classSequence,
-      this.schedule,
+          this.schedule,
+    this.courseCode,
+    this.isActive,
+    this.code,
+    this.instructorId,
+    this.department,
+    this.semester,
+    this.academicYearFull,
+    this.startDate,
+    this.endDate,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
@@ -85,6 +109,17 @@ class ClassModel {
       classCode: json['classCode']?.toString() ?? json['class_code']?.toString(),
       classSequence: json['classSequence'] ?? json['class_sequence'] as int?,
       schedule: json['schedule'] as Map<String, dynamic>?,
+      courseCode: json['courseCode']?.toString() ?? json['course_code']?.toString(),
+      isActive: json['isActive'] ?? json['is_active'] as bool?,
+      code: json['code']?.toString(),
+      instructorId: json['instructorId']?.toString() ?? json['instructor_id']?.toString(),
+      department: json['department']?.toString(),
+      semester: json['semester']?.toString(),
+      academicYearFull: json['academicYear']?.toString() ?? json['academic_year']?.toString(),
+      startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
+      endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
     );
   }
 
@@ -112,6 +147,17 @@ class ClassModel {
       'classCode': classCode,
       'classSequence': classSequence,
       'schedule': schedule,
+      'courseCode': courseCode,
+      'isActive': isActive,
+      'code': code,
+      'instructorId': instructorId,
+      'department': department,
+      'semester': semester,
+      'academic_year_full': academicYearFull,
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -194,6 +240,17 @@ class ClassModel {
     String? classCode,
     int? classSequence,
     Map<String, dynamic>? schedule,
+    String? courseCode,
+    bool? isActive,
+    String? code,
+    String? instructorId,
+    String? department,
+    String? semester,
+    String? academicYearFull,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return ClassModel(
       id: id ?? this.id,
@@ -218,6 +275,17 @@ class ClassModel {
       classCode: classCode ?? this.classCode,
       classSequence: classSequence ?? this.classSequence,
       schedule: schedule ?? this.schedule,
+    courseCode: courseCode ?? this.courseCode,
+    isActive: isActive ?? this.isActive,
+    code: code ?? this.code,
+    instructorId: instructorId ?? this.instructorId,
+    department: department ?? this.department,
+    semester: semester ?? this.semester,
+    academicYearFull: academicYearFull ?? this.academicYearFull,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 

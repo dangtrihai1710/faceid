@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
-import '../../models/class_model.dart';
 
 class UserManagementScreen extends StatefulWidget {
   final User currentUser;
@@ -25,7 +22,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   String _selectedRole = 'Tất cả';
   String _selectedStatus = 'Tất cả';
   int _currentPage = 1;
-  int _usersPerPage = 10;
+  final int _usersPerPage = 10;
   List<User> _selectedUsers = [];
   bool _isSelecting = false;
 
@@ -98,7 +95,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   List<User> get _paginatedUsers {
     final startIndex = (_currentPage - 1) * _usersPerPage;
-    final endIndex = startIndex + _usersPerPage;
     return _filteredUsers.skip(startIndex).take(_usersPerPage).toList();
   }
 
@@ -225,7 +221,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ),
       );
 
-      if (!confirmed) return;
+      if (!(confirmed ?? false)) return;
     }
 
     try {
@@ -320,7 +316,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -391,7 +387,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedRole,
+initialValue: _selectedRole,
               decoration: InputDecoration(
                 labelText: 'Vai trò',
                 border: OutlineInputBorder(
@@ -414,7 +410,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedStatus,
+initialValue: _selectedStatus,
               decoration: InputDecoration(
                 labelText: 'Trạng thái',
                 border: OutlineInputBorder(
@@ -477,7 +473,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -595,7 +591,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getRoleColor(user.role).withOpacity(0.1),
+                color: _getRoleColor(user.role).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -878,7 +874,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedRole,
+initialValue: _selectedRole,
                       decoration: const InputDecoration(
                         labelText: 'Vai trò',
                         border: OutlineInputBorder(),

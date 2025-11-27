@@ -219,7 +219,7 @@ class _UserCRUDScreenState extends State<UserCRUDScreen> {
 
                 // Role filter
                 DropdownButtonFormField<String>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: InputDecoration(
                     labelText: 'Lọc theo vai trò',
                     border: OutlineInputBorder(
@@ -303,7 +303,7 @@ class _UserCRUDScreenState extends State<UserCRUDScreen> {
                                           _getRoleDisplayName(user['role']),
                                           style: const TextStyle(fontSize: 12),
                                         ),
-                                        backgroundColor: _getRoleColor(user['role']).withOpacity(0.1),
+                                        backgroundColor: _getRoleColor(user['role']).withValues(alpha: 0.1),
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       const SizedBox(width: 8),

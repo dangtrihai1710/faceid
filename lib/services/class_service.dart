@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/class_model.dart';
 import '../models/attendance_model.dart';
-import '../utils/constants.dart';
+import '../core/config/api_config.dart';
 
 class ClassService {
   static String _getToken() {
@@ -13,7 +13,7 @@ class ClassService {
   static Future<List<ClassModel>> getStudentClasses() async {
     try {
       final response = await http.get(
-        Uri.parse('${Constants.BASE_URL}/api/v1/classes/'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/classes/'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_getToken()',
@@ -29,7 +29,7 @@ class ClassService {
       }
       return [];
     } catch (e) {
-      print('Error fetching student classes: $e');
+      developer.log('Error fetching student classes: $e', name: 'ClassService.getStudentClasses', level: 1000);
       return [];
     }
   }
@@ -37,7 +37,7 @@ class ClassService {
   static Future<List<AttendanceModel>> getAttendanceHistory(String classId) async {
     try {
       final response = await http.get(
-        Uri.parse('${Constants.BASE_URL}/api/v1/attendance/student/36'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/attendance/student/36'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_getToken()',
@@ -53,7 +53,7 @@ class ClassService {
       }
       return [];
     } catch (e) {
-      print('Error fetching attendance history: $e');
+      developer.log('Error fetching attendance history: $e', name: 'ClassService.getAttendanceHistory', level: 1000);
       return [];
     }
   }
@@ -61,7 +61,7 @@ class ClassService {
   static Future<Map<String, dynamic>> getAttendanceStats() async {
     try {
       final response = await http.get(
-        Uri.parse('${Constants.BASE_URL}/api/v1/attendance/student/36'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/attendance/student/36'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_getToken()',
@@ -73,7 +73,7 @@ class ClassService {
       }
       return {'success': false, 'data': {}};
     } catch (e) {
-      print('Error fetching attendance stats: $e');
+      developer.log('Error fetching attendance stats: $e', name: 'ClassService.getAttendanceStats', level: 1000);
       return {'success': false, 'data': {}};
     }
   }
@@ -90,7 +90,7 @@ class ClassService {
             'classId': classModel.id,
             'className': classModel.name,
             'instructor': classModel.instructorName,
-            'room': classModel.room ?? 'TBA',
+            'room': classModel.room,
             'dayOfWeek': classModel.schedule!['day_of_week'],
             'startTime': classModel.schedule!['start_time'],
             'endTime': classModel.schedule!['end_time'],
@@ -104,8 +104,74 @@ class ClassService {
         'data': schedule,
       };
     } catch (e) {
-      print('Error fetching schedule: $e');
+      developer.log('Error fetching schedule: $e', name: 'ClassService.getSchedule', level: 1000);
       return {'success': false, 'data': []};
+    }
+  }
+
+  // Admin methods for class management
+  static Future<List<dynamic>> getAttendanceRecordsByClass(String classId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/attendance/class/$classId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_getToken()',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return data['data'] as List;
+        }
+      }
+      return [];
+    } catch (e) {
+      developer.log('Error fetching attendance records: $e', name: 'ClassService.getAttendanceRecordsByClass', level: 1000);
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateClass(String classId, Map<String, dynamic> updateData) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/classes/$classId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_getToken()',
+        },
+        body: json.encode(updateData),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to update class'};
+    } catch (e) {
+      developer.log('Error updating class: $e', name: 'ClassService.updateClass', level: 1000);
+      return {'success': false, 'message': 'Error updating class'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> saveAttendanceRecord(Map<String, dynamic> attendanceData) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/attendance'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_getToken()',
+        },
+        body: json.encode(attendanceData),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to save attendance'};
+    } catch (e) {
+      developer.log('Error saving attendance: $e', name: 'ClassService.saveAttendanceRecord', level: 1000);
+      return {'success': false, 'message': 'Error saving attendance'};
     }
   }
 }

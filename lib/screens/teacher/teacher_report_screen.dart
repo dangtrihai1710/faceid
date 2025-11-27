@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
+// import 'package:syncfusion_flutter_charts/charts.dart'; // Charts dependency not available
 import '../../models/user.dart';
 import '../../models/class_model.dart';
 import '../../models/attendance_model.dart';
@@ -61,8 +60,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
   List<ClassModel> _allClasses = [];
   List<AttendanceModel> _attendanceRecords = [];
   bool _isLoading = true;
-  String _selectedPeriod = 'week';
-  late TabController _tabController;
+    late TabController _tabController;
 
   @override
   void initState() {
@@ -126,9 +124,9 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
 
   Map<String, dynamic> _calculateStats() {
     final totalSessions = _attendanceRecords.length;
-    final presentCount = _attendanceRecords.where((r) => r.status == 'present').length;
-    final absentCount = _attendanceRecords.where((r) => r.status == 'absent').length;
-    final lateCount = _attendanceRecords.where((r) => r.status == 'late').length;
+    final presentCount = _attendanceRecords.where((r) => r.status == AttendanceStatus.present).length;
+    final absentCount = _attendanceRecords.where((r) => r.status == AttendanceStatus.absent).length;
+    final lateCount = _attendanceRecords.where((r) => r.status == AttendanceStatus.late).length;
 
     return {
       'totalSessions': totalSessions,
@@ -139,63 +137,13 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
     };
   }
 
-  List<AttendanceTrendData> _getTrendData() {
-    final now = DateTime.now();
-    final List<AttendanceTrendData> trendData = [];
-
-    for (int i = 6; i >= 0; i--) {
-      final date = now.subtract(Duration(days: i));
-      final dateStr = DateFormat('MM/dd').format(date);
-
-      final dayRecords = _attendanceRecords.where((record) {
-        final recordDate = record.checkInTime;
-        return recordDate.year == date.year &&
-            recordDate.month == date.month &&
-            recordDate.day == date.day;
-      }).toList();
-
-      final present = dayRecords.where((r) => r.status == 'present').length;
-      final absent = dayRecords.where((r) => r.status == 'absent').length;
-      final late = dayRecords.where((r) => r.status == 'late').length;
-
-      trendData.add(AttendanceTrendData(
-        date: dateStr,
-        present: present,
-        absent: absent,
-        late: late,
-      ));
-    }
-
-    return trendData;
-  }
-
-  List<PieChartData> _getPieChartData() {
-    final stats = _calculateStats();
-
-    return [
-      PieChartData(
-        status: 'Có mặt',
-        count: stats['presentCount'],
-        color: Colors.green,
-      ),
-      PieChartData(
-        status: 'Vắng mặt',
-        count: stats['absentCount'],
-        color: Colors.red,
-      ),
-      PieChartData(
-        status: 'Đi muộn',
-        count: stats['lateCount'],
-        color: Colors.orange,
-      ),
-    ];
-  }
-
+  
+  
   List<ClassStatsData> _getClassStatsData() {
     return _allClasses.take(5).map((classModel) {
       final classRecords = _attendanceRecords.where((record) =>
           record.classId == classModel.id || record.classId == classModel.name).toList();
-      final presentCount = classRecords.where((r) => r.status == 'present').length;
+      final presentCount = classRecords.where((r) => r.status == AttendanceStatus.present).length;
       final attendanceRate = classRecords.isNotEmpty
           ? ((presentCount / classRecords.length) * 100).round()
           : 0;
@@ -283,7 +231,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.purple.withOpacity(0.2),
+          color: Colors.purple.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -341,7 +289,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -381,7 +329,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -465,7 +413,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -476,12 +424,12 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: record.statusColor.withOpacity(0.1),
+              color: _getStatusColorFromString(record.statusColor).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               Icons.check_circle,
-              color: record.statusColor,
+              color: _getStatusColorFromString(record.statusColor),
               size: 20,
             ),
           ),
@@ -510,13 +458,13 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: record.statusColor.withOpacity(0.1),
+              color: _getStatusColorFromString(record.statusColor).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               record.statusText,
               style: TextStyle(
-                color: record.statusColor,
+                color: _getStatusColorFromString(record.statusColor),
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),
@@ -544,7 +492,6 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
   }
 
   Widget _buildTrendChart() {
-    final trendData = _getTrendData();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -553,7 +500,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -573,38 +520,22 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
           const SizedBox(height: 16),
           SizedBox(
             height: 300,
-            child: SfCartesianChart(
-              primaryXAxis: CategoryAxis(
-                title: AxisTitle(text: 'Ngày'),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
               ),
-              primaryYAxis: NumericAxis(
-                title: AxisTitle(text: 'Số lượng'),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.insert_chart, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('Biểu đồ xu hướng điểm danh', style: TextStyle(fontSize: 16)),
+                    Text('(Charts library không khả dụng)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
               ),
-              legend: Legend(isVisible: true),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: [
-                LineSeries<AttendanceTrendData, String>(
-                  name: 'Có mặt',
-                  dataSource: trendData,
-                  xValueMapper: (AttendanceTrendData data, _) => data.date,
-                  yValueMapper: (AttendanceTrendData data, _) => data.present,
-                  color: Colors.green,
-                ),
-                LineSeries<AttendanceTrendData, String>(
-                  name: 'Vắng mặt',
-                  dataSource: trendData,
-                  xValueMapper: (AttendanceTrendData data, _) => data.date,
-                  yValueMapper: (AttendanceTrendData data, _) => data.absent,
-                  color: Colors.red,
-                ),
-                LineSeries<AttendanceTrendData, String>(
-                  name: 'Đi muộn',
-                  dataSource: trendData,
-                  xValueMapper: (AttendanceTrendData data, _) => data.date,
-                  yValueMapper: (AttendanceTrendData data, _) => data.late,
-                  color: Colors.orange,
-                ),
-              ],
             ),
           ),
         ],
@@ -613,7 +544,6 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
   }
 
   Widget _buildPieChart() {
-    final pieChartData = _getPieChartData();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -622,7 +552,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -642,18 +572,22 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
           const SizedBox(height: 16),
           SizedBox(
             height: 300,
-            child: SfCircularChart(
-              legend: Legend(isVisible: true, position: LegendPosition.bottom),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: [
-                PieSeries<PieChartData, String>(
-                  dataSource: pieChartData,
-                  xValueMapper: (PieChartData data, _) => data.status,
-                  yValueMapper: (PieChartData data, _) => data.count,
-                  pointColorMapper: (PieChartData data, _) => data.color,
-                  dataLabelSettings: const DataLabelSettings(isVisible: true),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.pie_chart, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('Biểu đồ phân bổ trạng thái', style: TextStyle(fontSize: 16)),
+                    Text('(Charts library không khả dụng)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -662,7 +596,6 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
   }
 
   Widget _buildClassStatsChart() {
-    final classStatsData = _getClassStatsData();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -671,7 +604,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -691,26 +624,22 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
           const SizedBox(height: 16),
           SizedBox(
             height: 300,
-            child: SfCartesianChart(
-              primaryXAxis: CategoryAxis(
-                title: AxisTitle(text: 'Lớp học'),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
               ),
-              primaryYAxis: NumericAxis(
-                title: AxisTitle(text: 'Tỷ lệ (%)'),
-                minimum: 0,
-                maximum: 100,
-              ),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: [
-                ColumnSeries<ClassStatsData, String>(
-                  dataSource: classStatsData,
-                  xValueMapper: (ClassStatsData data, _) => data.className,
-                  yValueMapper: (ClassStatsData data, _) => data.attendanceRate,
-                  pointColorMapper: (ClassStatsData data, _) =>
-                      data.attendanceRate >= 80 ? Colors.green : Colors.orange,
-                  dataLabelSettings: const DataLabelSettings(isVisible: true),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bar_chart, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('Biểu đồ thống kê lớp học', style: TextStyle(fontSize: 16)),
+                    Text('(Charts library không khả dụng)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -742,7 +671,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -840,7 +769,7 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -891,5 +820,23 @@ class _TeacherReportScreenState extends State<TeacherReportScreen>
         ],
       ),
     );
+  }
+
+  // Helper method to convert status color string to Color object
+  Color _getStatusColorFromString(String statusColorStr) {
+    switch (statusColorStr.toLowerCase()) {
+      case 'green':
+        return Colors.green;
+      case 'red':
+        return Colors.red;
+      case 'orange':
+        return Colors.orange;
+      case 'blue':
+        return Colors.blue;
+      case 'grey':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
 }

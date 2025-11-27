@@ -421,7 +421,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
 
               // Role
               DropdownButtonFormField<String>(
-                value: _selectedRole,
+initialValue: _selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Vai trò',
                   border: OutlineInputBorder(
@@ -474,7 +474,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                         label: Text(classId),
                         onDeleted: () => _removeSubjectClass(classId),
                         deleteIcon: const Icon(Icons.close, size: 18),
-                        backgroundColor: Colors.blue.withOpacity(0.1),
+                        backgroundColor: Colors.blue.withValues(alpha: 0.1),
                       );
                     }).toList(),
                   ),
@@ -484,7 +484,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                   icon: const Icon(Icons.add),
                   label: const Text('Thêm lớp môn học'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
                     foregroundColor: Colors.blue,
                   ),
                 ),

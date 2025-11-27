@@ -104,19 +104,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
     });
   }
 
-  List<ClassModel> _getTabClasses() {
-    switch (_tabController.index) {
-      case 0:
-        return _filteredClasses.where((c) => c.isToday).toList();
-      case 1:
-        return _filteredClasses.where((c) => c.isOngoing).toList();
-      case 2:
-        return _filteredClasses;
-      default:
-        return _filteredClasses;
-    }
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -273,9 +261,9 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -291,7 +279,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
             label,
             style: TextStyle(
               fontSize: 12,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -345,8 +333,8 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: classModel.isOngoing
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.blue.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -381,7 +369,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -438,7 +426,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
                     margin: const EdgeInsets.only(left: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -513,49 +501,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
   }
 
   
-  void _showClassOptions(ClassModel classModel) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${classModel.displayName}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.class_outlined, size: 64, color: Colors.green),
-            const SizedBox(height: 16),
-            Text('Phòng: ${classModel.room}'),
-            Text('Môn học: ${classModel.subject}'),
-            const SizedBox(height: 24),
-            const Text('Chọn thao tác:', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _viewStudentList(classModel);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            child: const Text('Danh sách SV'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _manualAttendance(classModel);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-            child: const Text('Điểm danh thủ công'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   void _showAttendanceOptions(ClassModel classModel) {
     showDialog(
       context: context,
@@ -644,21 +590,13 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
     );
   }
 
-  void _manualAttendance(ClassModel classModel) {
-    // TODO: Navigate to manual attendance screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Điểm danh thủ công: ${classModel.displayName}'),
-        backgroundColor: Colors.purple,
-      ),
-    );
-  }
-
+  
   void _faceScanning(ClassModel classModel) {
-    // TODO: Navigate to face scanning screen
+    // Note: Face scanning screen navigation will be implemented when feature is ready
+    // Expected navigation: Navigator.pushNamed(context, '/face-scanning', arguments: classModel);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Quét mặt điểm danh: ${classModel.displayName}'),
+        content: Text('Tính năng quét mặt điểm danh đang được phát triển cho lớp: ${classModel.displayName}'),
         backgroundColor: Colors.teal,
       ),
     );

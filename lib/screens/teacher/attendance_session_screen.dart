@@ -31,8 +31,7 @@ class _AttendanceSessionScreenState extends State<AttendanceSessionScreen>
   bool _isSessionActive = false;
   bool _isLoading = false;
   int _selectedDuration = 30; // minutes
-  DateTime? _sessionStartTime;
-  DateTime? _sessionEndTime;
+    DateTime? _sessionEndTime;
 
   // List of durations to choose from
   final List<int> _durations = [5, 10, 15, 30, 45, 60];
@@ -115,8 +114,7 @@ class _AttendanceSessionScreenState extends State<AttendanceSessionScreen>
       if (response['success'] == true) {
         setState(() {
           _isSessionActive = true;
-          _sessionStartTime = DateTime.now();
-          _sessionEndTime = DateTime.now().add(Duration(minutes: _selectedDuration));
+                    _sessionEndTime = DateTime.now().add(Duration(minutes: _selectedDuration));
           _isLoading = false;
         });
 
@@ -163,8 +161,7 @@ class _AttendanceSessionScreenState extends State<AttendanceSessionScreen>
 
       setState(() {
         _isSessionActive = false;
-        _sessionStartTime = null;
-        _sessionEndTime = null;
+                _sessionEndTime = null;
       });
 
       if (response['success'] == true) {
@@ -470,7 +467,7 @@ class _AttendanceSessionScreenState extends State<AttendanceSessionScreen>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
+                          color: Colors.blue.withValues(alpha: 0.3),
                           spreadRadius: 2,
                           blurRadius: 8,
                         ),

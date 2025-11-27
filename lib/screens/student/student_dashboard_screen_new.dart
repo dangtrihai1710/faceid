@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../../models/user.dart';
-import '../../services/api_service.dart';
 import 'class_list_screen.dart';
 import 'qr_attendance_screen.dart';
 
@@ -138,7 +137,7 @@ class _StudentDashboardScreenNewState extends State<StudentDashboardScreenNew> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 4,
               offset: const Offset(0, 2),
@@ -152,7 +151,7 @@ class _StudentDashboardScreenNewState extends State<StudentDashboardScreenNew> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(

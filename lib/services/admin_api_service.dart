@@ -1,13 +1,12 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/class_model.dart';
-import 'auth_service.dart';
 import 'api_service.dart';
 
 class AdminApiService {
-  static const String _adminKey = 'admin_data';
-  static const String _adminCredentials = 'admin_credentials';
+    static const String _adminCredentials = 'admin_credentials';
 
   // Initialize admin account - Dùng cho local fallback
   static Future<void> initializeAdmin() async {
@@ -28,27 +27,27 @@ class AdminApiService {
         };
 
         await prefs.setString(_adminCredentials, jsonEncode(adminCredentials));
-        print('Admin account initialized: AD001/admin123');
+        developer.log('Admin account initialized: AD001/admin123', name: 'AdminApi');
       }
     } catch (e) {
-      print('Error initializing admin: $e');
+      developer.log('Error initializing admin: $e', name: 'AdminApi', level: 1000);
     }
   }
 
   // Admin login - Try FastAPI first, fallback to local
   static Future<Map<String, dynamic>?> adminLogin(String userId, String password) async {
     try {
-      print('🔐 Attempting admin login via FastAPI...');
+      developer.log('🔐 Attempting admin login via FastAPI...', name: 'AdminApi');
 
       // Try login via FastAPI first
       final apiResult = await ApiService.login(userId, password, 'admin');
 
       if (apiResult['success'] == true) {
-        print('✅ Admin login successful via FastAPI');
+        developer.log('✅ Admin login successful via FastAPI', name: 'AdminApi');
         return apiResult;
       }
 
-      print('⚠️ FastAPI login failed, trying local fallback...');
+      developer.log('⚠️ FastAPI login failed, trying local fallback...', name: 'AdminApi');
 
       // Fallback to local storage
       final prefs = await SharedPreferences.getInstance();
@@ -74,7 +73,7 @@ class AdminApiService {
 
       return {'success': false, 'error': 'Tài khoản hoặc mật khẩu không chính xác'};
     } catch (e) {
-      print('Error during admin login: $e');
+      developer.log('Error during admin login: $e', name: 'AdminApi', level: 1000);
       return {'success': false, 'error': 'Lỗi đăng nhập'};
     }
   }
@@ -82,7 +81,7 @@ class AdminApiService {
   // Get all users - Try FastAPI first, fallback to demo data
   static Future<List<User>> getAllUsers(String token, {String? role}) async {
     try {
-      print('👥 Getting users from FastAPI...');
+      developer.log('👥 Getting users from FastAPI...', name: 'AdminApi');
 
       // Set token for API calls
       ApiService.setToken(token);
@@ -104,11 +103,11 @@ class AdminApiService {
               : DateTime.now(),
         )).toList();
 
-        print('✅ Got ${allUsers.length} users from FastAPI');
+        developer.log('✅ Got ${allUsers.length} users from FastAPI', name: 'AdminApi');
         return role == null ? allUsers : allUsers.where((user) => user.role == role).toList();
       }
 
-      print('⚠️ FastAPI users failed, using demo data...');
+      developer.log('⚠️ FastAPI users failed, using demo data...', name: 'AdminApi');
 
       // Fallback to demo data
       final List<User> demoUsers = [
@@ -152,7 +151,7 @@ class AdminApiService {
 
       return role == null ? demoUsers : demoUsers.where((user) => user.role == role).toList();
     } catch (e) {
-      print('❌ Error getting users: $e');
+      developer.log('❌ Error getting users: $e', name: 'AdminApi', level: 1000);
       return [];
     }
   }
@@ -170,7 +169,7 @@ class AdminApiService {
   // Get all classes - Try FastAPI first, fallback to demo data
   static Future<List<ClassModel>> getAllClasses(String token) async {
     try {
-      print('📚 Getting classes from FastAPI...');
+      developer.log('📚 Getting classes from FastAPI...', name: 'AdminApi');
 
       // Set token for API calls
       ApiService.setToken(token);
@@ -179,11 +178,11 @@ class AdminApiService {
       final apiClasses = await ApiService.getAllClasses(token);
 
       if (apiClasses.isNotEmpty) {
-        print('✅ Got ${apiClasses.length} classes from FastAPI');
+        developer.log('✅ Got ${apiClasses.length} classes from FastAPI', name: 'AdminApi');
         return apiClasses;
       }
 
-      print('⚠️ FastAPI classes failed, using demo data...');
+      developer.log('⚠️ FastAPI classes failed, using demo data...', name: 'AdminApi');
 
       // Fallback to demo data
       return [
@@ -207,7 +206,7 @@ class AdminApiService {
         ),
       ];
     } catch (e) {
-      print('❌ Error getting classes: $e');
+      developer.log('❌ Error getting classes: $e', name: 'AdminApi', level: 1000);
       return [];
     }
   }
@@ -215,7 +214,7 @@ class AdminApiService {
   // Get attendance records - simplified for basic interface
   static Future<List<Map<String, dynamic>>> getAttendanceRecords(String token, {String? classId}) async {
     try {
-      print('📊 Getting attendance records...');
+      developer.log('📊 Getting attendance records...', name: 'AdminApi');
 
       // Return demo data for simplified interface
       return [
@@ -237,7 +236,7 @@ class AdminApiService {
         },
       ];
     } catch (e) {
-      print('❌ Error getting attendance records: $e');
+      developer.log('❌ Error getting attendance records: $e', name: 'AdminApi', level: 1000);
       return [];
     }
   }
@@ -269,7 +268,7 @@ class AdminApiService {
         'users': students.length + instructors.length,
       };
     } catch (e) {
-      print('Error getting system statistics: $e');
+      developer.log('Error getting system statistics: $e', name: 'AdminApi', level: 1000);
       return {
         'students': 2,
         'instructors': 2,

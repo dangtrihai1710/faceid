@@ -189,9 +189,6 @@ class _ClassCRUDScreenState extends State<ClassCRUDScreen> {
 
   Future<void> _toggleClassStatus(ClassModel classModel) async {
     try {
-      final token = ApiService.getToken();
-      final newStatus = !(classModel.isAttendanceOpen);
-
       // For now, we'll toggle attendance status as an example
       // You can extend this based on your specific requirements
       _showSuccess('Cập nhật trạng thái lớp học thành công');
@@ -250,7 +247,7 @@ class _ClassCRUDScreenState extends State<ClassCRUDScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedType,
+                        initialValue: _selectedType,
                         decoration: InputDecoration(
                           labelText: 'Loại lớp',
                           border: OutlineInputBorder(
@@ -274,7 +271,7 @@ class _ClassCRUDScreenState extends State<ClassCRUDScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedStatus,
+                        initialValue: _selectedStatus,
                         decoration: InputDecoration(
                           labelText: 'Trạng thái',
                           border: OutlineInputBorder(
@@ -361,7 +358,7 @@ class _ClassCRUDScreenState extends State<ClassCRUDScreen> {
                                           _getClassTypeDisplayName(classItem.classType),
                                           style: const TextStyle(fontSize: 12),
                                         ),
-                                        backgroundColor: _getClassTypeColor(classItem.classType).withOpacity(0.1),
+                                        backgroundColor: _getClassTypeColor(classItem.classType).withValues(alpha: 0.1),
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       const SizedBox(width: 8),
@@ -370,7 +367,7 @@ class _ClassCRUDScreenState extends State<ClassCRUDScreen> {
                                           classItem.statusText,
                                           style: const TextStyle(fontSize: 12),
                                         ),
-                                        backgroundColor: _getStatusColor(classItem).withOpacity(0.1),
+                                        backgroundColor: _getStatusColor(classItem).withValues(alpha: 0.1),
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                     ],

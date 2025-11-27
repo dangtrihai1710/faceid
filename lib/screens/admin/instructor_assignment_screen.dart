@@ -24,7 +24,7 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
   Map<String, dynamic>? _selectedInstructor;
   bool _isLoading = true;
   bool _isAssigning = false;
-  bool _isUpdatingClass = false;
+  final bool _isUpdatingClass = false;
 
   @override
   void initState() {
@@ -49,7 +49,7 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
         _filteredInstructors = List.from(instructors);
 
         // Pre-select current instructor if any
-        if (widget.classItem.instructor != null) {
+        if (widget.classItem.instructor.isNotEmpty) {
           _selectedInstructor = instructors.firstWhere(
             (instructor) => instructor['user_id'] == widget.classItem.instructor,
             orElse: () => instructors.isNotEmpty ? instructors.first : {} as Map<String, dynamic>,
@@ -143,7 +143,9 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
         }
 
         _showSuccess('Phân công giảng viên thành công');
-        Navigator.of(context).pop(true); // Return true to indicate success
+        if (mounted) {
+          Navigator.of(context).pop(true); // Return true to indicate success
+        }
       } else {
         _showError(classResult['message'] ?? 'Không thể phân công giảng viên');
       }
@@ -161,40 +163,48 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.purple[100],
-          child: Text(
-            (instructor['full_name'] ?? '').substring(0, 1).toUpperCase(),
-            style: TextStyle(color: Colors.purple[700]),
-          ),
-        ),
-        title: Text(
-          instructor['full_name'] ?? '',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Mã: ${instructor['user_id'] ?? ''}'),
-            Text(instructor['email'] ?? ''),
-          ],
-        ),
-        trailing: Radio<Map<String, dynamic>>(
-          value: instructor,
-          groupValue: _selectedInstructor,
-          onChanged: (value) {
-            setState(() {
-              _selectedInstructor = value;
-            });
-          },
-        ),
+      child: InkWell(
         onTap: () {
           setState(() {
             _selectedInstructor = instructor;
           });
         },
-        selected: isSelected,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Custom radio button using Icon to avoid deprecated Radio widget
+              Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                color: Theme.of(context).primaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              CircleAvatar(
+                backgroundColor: Colors.purple[100],
+                child: Text(
+                  (instructor['full_name'] ?? '').substring(0, 1).toUpperCase(),
+                  style: TextStyle(color: Colors.purple[700]),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      instructor['full_name'] ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Mã: ${instructor['user_id'] ?? ''}'),
+                    Text(instructor['email'] ?? ''),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -207,18 +217,18 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
         gradient: LinearGradient(
           colors: [
             widget.classItem.classType == 'academic'
-                ? Colors.blue.withOpacity(0.1)
-                : Colors.green.withOpacity(0.1),
+                ? Colors.blue.withValues(alpha: 0.1)
+                : Colors.green.withValues(alpha: 0.1),
             widget.classItem.classType == 'academic'
-                ? Colors.blue.withOpacity(0.05)
-                : Colors.green.withOpacity(0.05),
+                ? Colors.blue.withValues(alpha: 0.05)
+                : Colors.green.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: widget.classItem.classType == 'academic'
-              ? Colors.blue.withOpacity(0.3)
-              : Colors.green.withOpacity(0.3),
+              ? Colors.blue.withValues(alpha: 0.3)
+              : Colors.green.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -398,7 +408,7 @@ class _InstructorAssignmentScreenState extends State<InstructorAssignmentScreen>
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, -2),
             ),

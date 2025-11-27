@@ -147,13 +147,6 @@ class _LoginScreenApiState extends State<LoginScreenApi>
         // Navigate based on user role
         final route = user['role'] == 'student' ? '/student_home' : '/teacher_home';
         Navigator.pushReplacementNamed(context, route);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chào mừng ${user['fullName']}!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

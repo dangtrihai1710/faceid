@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/class_model.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
+import 'dart:developer' as developer;
 
 class ClassManagementScreen extends StatefulWidget {
   final User currentUser;
@@ -26,7 +25,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
   String _selectedStatus = 'Tất cả';
   String _selectedDay = 'Tất cả';
   int _currentPage = 1;
-  int _classesPerPage = 10;
+  final int _classesPerPage = 10;
   List<ClassModel> _selectedClasses = [];
   bool _isSelecting = false;
 
@@ -56,14 +55,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
       final classesData = await ApiService.getAllClasses(token);
 
       setState(() {
-        _classes = classesData.map((data) {
-          if (data is Map<String, dynamic>) {
-            return ClassModel.fromJson(data);
-          } else {
-            // Handle case where API returns class objects directly
-            return data as ClassModel;
-          }
-        }).toList();
+        _classes = classesData;
         _filteredClasses = List.from(_classes);
         _isLoading = false;
       });
@@ -76,14 +68,15 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
   void _filterClasses() {
     setState(() {
       _filteredClasses = _classes.where((classItem) {
-        final matchesSearch = classItem.name.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-                            classItem.courseCode.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-                            (classItem.instructorName?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false);
+        final searchLower = _searchController.text.toLowerCase();
+        final matchesSearch = classItem.name.toLowerCase().contains(searchLower) ||
+                            (classItem.courseCode?.toLowerCase().contains(searchLower) ?? false) ||
+                            (classItem.instructorName?.toLowerCase().contains(searchLower) ?? false);
 
         final matchesInstructor = _selectedInstructor == 'Tất cả' || classItem.instructorName == _selectedInstructor;
         final matchesStatus = _selectedStatus == 'Tất cả' ||
-                              (_selectedStatus == 'Đang hoạt động' && classItem.isActive) ||
-                              (_selectedStatus == 'Không hoạt động' && !classItem.isActive);
+                              (_selectedStatus == 'Đang hoạt động' && (classItem.isActive ?? false)) ||
+                              (_selectedStatus == 'Không hoạt động' && !(classItem.isActive ?? false));
         final matchesDay = _selectedDay == 'Tất cả' || classItem.timeRange.contains(_selectedDay);
 
         return matchesSearch && matchesInstructor && matchesStatus && matchesDay;
@@ -94,7 +87,6 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
 
   List<ClassModel> get _paginatedClasses {
     final startIndex = (_currentPage - 1) * _classesPerPage;
-    final endIndex = startIndex + _classesPerPage;
     return _filteredClasses.skip(startIndex).take(_classesPerPage).toList();
   }
 
@@ -158,7 +150,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
   void _toggleClassStatus(ClassModel classItem) async {
     try {
       final token = ApiService.getToken();
-      final newStatus = !classItem.isActive;
+      final newStatus = !(classItem.isActive ?? false);
       await ApiService.updateClassStatus(token, classItem.id, newStatus);
       _showSuccessSnackbar('Cập nhật trạng thái thành công');
       await _loadClasses();
@@ -237,7 +229,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
         ),
       );
 
-      if (!confirmed) return;
+      if (!(confirmed ?? false)) return;
     }
 
     try {
@@ -338,7 +330,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -409,7 +401,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedInstructor,
+initialValue: _selectedInstructor,
               decoration: InputDecoration(
                 labelText: 'Giảng viên',
                 border: OutlineInputBorder(
@@ -433,7 +425,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedStatus,
+initialValue: _selectedStatus,
               decoration: InputDecoration(
                 labelText: 'Trạng thái',
                 border: OutlineInputBorder(
@@ -455,7 +447,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _selectedDay,
+initialValue: _selectedDay,
               decoration: InputDecoration(
                 labelText: 'Thứ',
                 border: OutlineInputBorder(
@@ -523,7 +515,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, 2),
@@ -615,7 +607,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                 onChanged: (value) => _toggleClassSelection(classItem),
               ),
             ),
-          Expanded(flex: 1, child: Text(classItem.courseCode)),
+          Expanded(flex: 1, child: Text(classItem.courseCode ?? '')),
           Expanded(
             flex: 2,
             child: Column(
@@ -651,15 +643,15 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
             child: Row(
               children: [
                 Icon(
-                  classItem.isActive ? Icons.check_circle : Icons.cancel,
+                  (classItem.isActive ?? false) ? Icons.check_circle : Icons.cancel,
                   size: 16,
-                  color: classItem.isActive ? Colors.green : Colors.red,
+                  color: (classItem.isActive ?? false) ? Colors.green : Colors.red,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  classItem.isActive ? 'Hoạt động' : 'Không hoạt động',
+                  (classItem.isActive ?? false) ? 'Hoạt động' : 'Không hoạt động',
                   style: TextStyle(
-                    color: classItem.isActive ? Colors.green : Colors.red,
+                    color: (classItem.isActive ?? false) ? Colors.green : Colors.red,
                     fontSize: 12,
                   ),
                 ),
@@ -696,7 +688,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'toggle_status',
-                      child: Text(classItem.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'),
+                      child: Text((classItem.isActive ?? false) ? 'Vô hiệu hóa' : 'Kích hoạt'),
                     ),
                     const PopupMenuItem(
                       value: 'manage_students',
@@ -786,11 +778,11 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
     super.initState();
     if (widget.classItem != null) {
       _classNameController.text = widget.classItem!.name;
-      _courseCodeController.text = widget.classItem!.courseCode;
+      _courseCodeController.text = widget.classItem!.courseCode ?? '';
       _roomController.text = widget.classItem!.room;
       _timeController.text = widget.classItem!.timeRange;
       _descriptionController.text = widget.classItem!.description ?? '';
-      _isActive = widget.classItem!.isActive;
+      _isActive = widget.classItem!.isActive ?? false;
     }
   }
 
@@ -909,7 +901,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedDay,
+initialValue: _selectedDay,
                       decoration: const InputDecoration(
                         labelText: 'Thứ',
                         border: OutlineInputBorder(),
@@ -931,7 +923,7 @@ class _ClassFormDialogState extends State<ClassFormDialog> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedTime,
+                      initialValue: _selectedTime,
                       decoration: const InputDecoration(
                         labelText: 'Ca học',
                         border: OutlineInputBorder(),
@@ -1083,8 +1075,7 @@ class InstructorAssignmentDialog extends StatefulWidget {
 
 class _InstructorAssignmentDialogState extends State<InstructorAssignmentDialog> {
   String? _selectedInstructor;
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _instructors = [];
+    List<Map<String, dynamic>> _instructors = [];
 
   @override
   void initState() {
@@ -1100,7 +1091,7 @@ class _InstructorAssignmentDialogState extends State<InstructorAssignmentDialog>
         _instructors = instructorsData.cast<Map<String, dynamic>>();
       });
     } catch (e) {
-      print('Error loading instructors: $e');
+      developer.log('Error loading instructors: $e', name: 'ClassManagement.instructors', level: 1000);
     }
   }
 
@@ -1129,7 +1120,7 @@ class _InstructorAssignmentDialogState extends State<InstructorAssignmentDialog>
             ),
             const SizedBox(height: 24),
             DropdownButtonFormField<String>(
-              value: _selectedInstructor,
+initialValue: _selectedInstructor,
               decoration: const InputDecoration(
                 labelText: 'Chọn giảng viên',
                 border: OutlineInputBorder(),

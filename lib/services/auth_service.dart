@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'api_service.dart';
@@ -34,9 +35,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, user.token);
       await prefs.setString(_userKey, jsonEncode(user.toJson()));
-      print('✅ Authentication state saved for user: ${user.userId}');
+      developer.log('✅ Authentication state saved for user: ${user.userId}', name: 'AuthService');
     } catch (e) {
-      print('❌ Error saving auth state: $e');
+      developer.log('❌ Error saving auth state: $e', name: 'AuthService', level: 1000);
       throw Exception('Lỗi khi lưu trạng thái đăng nhập');
     }
   }
@@ -52,9 +53,9 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
       await prefs.remove(_userKey);
-      print('✅ Authentication state cleared');
+      developer.log('✅ Authentication state cleared', name: 'AuthService');
     } catch (e) {
-      print('❌ Error clearing auth state: $e');
+      developer.log('❌ Error clearing auth state: $e', name: 'AuthService', level: 1000);
       throw Exception('Lỗi khi xóa trạng thái đăng nhập');
     }
   }
@@ -67,7 +68,7 @@ class AuthService {
       final List<dynamic> usersList = jsonDecode(usersJson);
       return usersList.cast<Map<String, dynamic>>();
     } catch (e) {
-      print('❌ Error getting registered users: $e');
+      developer.log('❌ Error getting registered users: $e', name: 'AuthService', level: 1000);
       return [];
     }
   }
@@ -80,9 +81,9 @@ class AuthService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_usersKey, jsonEncode(users));
-      print('✅ User saved to local storage: ${userData['userId']}');
+      developer.log('✅ User saved to local storage: ${userData['userId']}', name: 'AuthService');
     } catch (e) {
-      print('❌ Error saving user to storage: $e');
+      developer.log('❌ Error saving user to storage: $e', name: 'AuthService', level: 1000);
       throw Exception('Lỗi khi lưu thông tin người dùng');
     }
   }
@@ -90,7 +91,7 @@ class AuthService {
   // Register new user
   Future<User> register(String userId, String email, String password, String fullName, {String role = 'student'}) async {
     try {
-      print('🔄 Starting registration for: $userId');
+      developer.log('🔄 Starting registration for: $userId', name: 'AuthService');
 
       // Check if userId already exists
       final users = await _getRegisteredUsers();
@@ -147,27 +148,27 @@ class AuthService {
       // Also set token in ApiService for CRUD operations
       ApiService.setToken(user.token);
 
-      print('✅ Registration successful for: $userId');
+      developer.log('✅ Registration successful for: $userId', name: 'AuthService');
       return user;
     } catch (e) {
-      print('❌ Registration error: $e');
-      throw e;
+      developer.log('❌ Registration error: $e', name: 'AuthService', level: 1000);
+      rethrow;
     }
   }
 
   // Login user
   Future<User> login(String userId, String password, {String role = 'student'}) async {
     try {
-      print('🔄 Starting login for: $userId');
+      developer.log('🔄 Starting login for: $userId', name: 'AuthService');
 
       // Check demo accounts first
       if (_demoAccounts.containsKey(userId) && _demoAccounts[userId] == password) {
-        print('✅ Demo account login successful: $userId');
+        developer.log('✅ Demo account login successful: $userId', name: 'AuthService');
 
         final user = User(
           id: 'demo_${userId}_id',
           userId: userId,
-          email: '${userId}@demo.com',
+          email: '$userId@demo.com',
           fullName: userId == 'AD001' || userId == 'admin' ? 'Admin Demo' : 'User Demo',
           token: 'demo_token_${DateTime.now().millisecondsSinceEpoch}',
           role: userId == 'AD001' || userId == 'admin' ? 'admin' : role,
@@ -217,11 +218,11 @@ class AuthService {
       // Also set token in ApiService for CRUD operations
       ApiService.setToken(user.token);
 
-      print('✅ Login successful for: $userId');
+      developer.log('✅ Login successful for: $userId', name: 'AuthService');
       return user;
     } catch (e) {
-      print('❌ Login error: $e');
-      throw e;
+      developer.log('❌ Login error: $e', name: 'AuthService', level: 1000);
+      rethrow;
     }
   }
 
@@ -233,9 +234,9 @@ class AuthService {
       // Clear token from ApiService
       ApiService.setToken('');
 
-      print('✅ Logout successful');
+      developer.log('✅ Logout successful', name: 'AuthService');
     } catch (e) {
-      print('❌ Logout error: $e');
+      developer.log('❌ Logout error: $e', name: 'AuthService', level: 1000);
       throw Exception('Lỗi khi đăng xuất: $e');
     }
   }
@@ -254,14 +255,14 @@ class AuthService {
       final isLoggedIn = token != null && token.isNotEmpty;
 
       // Set token in ApiService if logged in
-      if (isLoggedIn && token != null) {
+      if (token != null && token.isNotEmpty) {
         ApiService.setToken(token);
       }
 
-      print('Login status check: $isLoggedIn');
+      developer.log('Login status check: $isLoggedIn', name: 'AuthService');
       return isLoggedIn;
     } catch (e) {
-      print('Error checking login status: $e');
+      developer.log('Error checking login status: $e', name: 'AuthService', level: 1000);
       return false;
     }
   }
@@ -279,7 +280,7 @@ class AuthService {
       final userData = jsonDecode(userJson) as Map<String, dynamic>;
       return User.fromJson(userData);
     } catch (e) {
-      print('Error getting current user: $e');
+      developer.log('Error getting current user: $e', name: 'AuthService', level: 1000);
       return null;
     }
   }
@@ -292,7 +293,7 @@ class AuthService {
   // Create demo users for mobile testing
   static Future<void> createDemoUsers() async {
     try {
-      print('🔄 Creating demo users for mobile testing...');
+      developer.log('🔄 Creating demo users for mobile testing...', name: 'AuthService');
 
       await saveUserCredentials('AD001', 'admin123', 'admin');
       await saveUserCredentials('SV001', 'student123', 'student');
@@ -300,9 +301,9 @@ class AuthService {
       await saveUserCredentials('GV001', 'instructor123', 'instructor');
       await saveUserCredentials('GV002', 'instructor123', 'instructor');
 
-      print('✅ Demo users created successfully');
+      developer.log('✅ Demo users created successfully', name: 'AuthService');
     } catch (e) {
-      print('❌ Error creating demo users: $e');
+      developer.log('❌ Error creating demo users: $e', name: 'AuthService', level: 1000);
     }
   }
 
@@ -337,9 +338,9 @@ class AuthService {
       }
 
       await prefs.setString(_usersKey, jsonEncode(users));
-      print('✅ User credentials saved for: $userId');
+      developer.log('✅ User credentials saved for: $userId', name: 'AuthService');
     } catch (e) {
-      print('❌ Error saving user credentials: $e');
+      developer.log('❌ Error saving user credentials: $e', name: 'AuthService', level: 1000);
     }
   }
 }

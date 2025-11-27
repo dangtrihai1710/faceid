@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
-import '../../services/api_service.dart';
 
 class AttendanceReportScreen extends StatefulWidget {
   final User currentUser;
@@ -15,8 +14,7 @@ class AttendanceReportScreen extends StatefulWidget {
 }
 
 class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
-  bool _isLoading = false;
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

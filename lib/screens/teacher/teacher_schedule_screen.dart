@@ -180,7 +180,6 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
   }
 
   Widget _buildWeekSchedule() {
-    final now = DateTime.now();
     return RefreshIndicator(
       onRefresh: _loadData,
       child: SingleChildScrollView(
@@ -248,7 +247,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
+            color: Colors.blue.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -273,7 +272,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
               Text(
                 DateFormat('EEEE, d MMMM yyyy', 'vi_VN').format(date),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 16,
                 ),
               ),
@@ -287,7 +286,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
               Text(
                 '${_todayClasses.length} buổi học hôm nay',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
                 ),
               ),
@@ -313,7 +312,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
+            color: Colors.purple.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -336,9 +335,9 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
               Icon(Icons.date_range, color: Colors.white70, size: 20),
               const SizedBox(width: 8),
               Text(
-                '${_getWeekRange()}',
+                _getWeekRange(),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 16,
                 ),
               ),
@@ -352,7 +351,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
               Text(
                 '${_weekClasses.length} buổi học trong tuần',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,
                 ),
               ),
@@ -378,7 +377,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.3),
+            color: Colors.green.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -403,7 +402,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
               Text(
                 '${_allClasses.length} lớp học',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 16,
                 ),
               ),
@@ -508,7 +507,6 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
   Widget _buildScheduleCard(ClassModel classModel, bool showTodayStatus) {
     final isNow = classModel.isOngoing;
     final isUpcoming = classModel.isUpcoming;
-    final isPast = !isNow && !isUpcoming;
 
     Color cardColor = Colors.white;
     Color borderColor = Colors.grey[300]!;
@@ -527,7 +525,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
         border: Border.all(color: borderColor, width: isNow ? 2 : 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -543,7 +541,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(classModel).withOpacity(0.1),
+                    color: _getStatusColor(classModel).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -576,7 +574,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -595,7 +593,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(classModel).withOpacity(0.1),
+                      color: _getStatusColor(classModel).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

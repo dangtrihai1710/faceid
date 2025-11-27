@@ -4,6 +4,7 @@ import 'dart:math';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
 import '../../services/api_service.dart';
+import 'dart:developer' as developer;
 
 class TeacherAttendanceCodeScreen extends StatefulWidget {
   final User currentUser;
@@ -25,12 +26,11 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
     with TickerProviderStateMixin {
   String? _generatedCode;
   DateTime? _generatedTime;
-  int _validDuration = 15; // 15 minutes
+  final int _validDuration = 15; // 15 minutes
   bool _isActive = false;
   List<Map<String, dynamic>> _attendanceList = [];
   late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-
+  
   @override
   void initState() {
     super.initState();
@@ -38,13 +38,6 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    ));
   }
 
   @override
@@ -87,12 +80,14 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
       );
 
       if (response['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã tạo ${widget.codeType == 'qr' ? 'QR Code' : 'mã PIN'} thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã tạo ${widget.codeType == 'qr' ? 'QR Code' : 'mã PIN'} thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
 
         // Start checking attendance
         _startAttendanceMonitoring();
@@ -103,12 +98,14 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
       setState(() {
         _isActive = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi tạo mã: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tạo mã: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -157,7 +154,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
         }
       }
     } catch (e) {
-      print('Error checking attendance: $e');
+      developer.log('Error checking attendance: $e', name: 'TeacherAttendanceCode.check', level: 1000);
     }
   }
 
@@ -169,19 +166,21 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
         '/api/v1/classes/${widget.classModel.id}/stop-attendance-session',
       );
     } catch (e) {
-      print('Error stopping session: $e');
+      developer.log('Error stopping session: $e', name: 'TeacherAttendanceCode.stop', level: 1000);
     }
 
     setState(() {
       _isActive = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Phiên điểm danh đã kết thúc!'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phiên điểm danh đã kết thúc!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 
   bool _isSessionValid() {
@@ -244,7 +243,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -359,7 +358,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
                         Text(
                           'Thời gian còn lại: ${_formatDuration(_remainingTime)}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
                           ),
                         ),
@@ -380,7 +379,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -443,7 +442,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

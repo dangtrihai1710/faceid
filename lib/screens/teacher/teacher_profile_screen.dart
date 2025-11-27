@@ -137,7 +137,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
+            color: Colors.purple.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -149,7 +149,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
                 child: Text(
                   widget.currentUser.fullName.isNotEmpty
                       ? widget.currentUser.fullName[0].toUpperCase()
@@ -194,13 +194,13 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               'Giảng viên',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -210,7 +210,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
           Text(
             'Mã GV: ${widget.currentUser.userId}',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 14,
             ),
           ),
@@ -395,9 +395,9 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -414,7 +414,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
           Text(
             label,
             style: TextStyle(
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -465,7 +465,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color, size: 24),
@@ -490,7 +490,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
   }
 
   Widget _buildLogoutButton() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () => _showLogoutDialog(),
@@ -510,11 +510,13 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
   }
 
   void _saveProfile() {
-    // TODO: Implement save profile logic
+    // Profile saving - placeholder implementation
+    // Note: Profile update API call will be implemented when backend is ready
+    // Expected API: ApiService.updateUserProfile(userId: widget.currentUser.id, profileData: updatedData)
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Hồ sơ đã được cập nhật thành công!'),
-        backgroundColor: Colors.green,
+        content: Text('Tính năng lưu hồ sơ đang được phát triển!'),
+        backgroundColor: Colors.orange,
       ),
     );
   }

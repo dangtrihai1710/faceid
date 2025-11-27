@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../models/class_model.dart';
@@ -30,7 +31,7 @@ class ApiService {
 
   // Handle network errors
   static dynamic _handleError(http.Response response) {
-    print('❌ API Error: ${response.statusCode} - ${response.body}');
+    developer.log('❌ API Error: ${response.statusCode} - ${response.body}', name: 'ApiService', level: 1000);
 
     switch (response.statusCode) {
       case 400:
@@ -61,8 +62,8 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 10));
 
-      print('🔐 Login attempt: $userId as $role');
-      print('📡 Response: ${response.statusCode}');
+      developer.log('🔐 Login attempt: $userId as $role', name: 'ApiService');
+      developer.log('📡 Response: ${response.statusCode}', name: 'ApiService');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -70,8 +71,8 @@ class ApiService {
         // Check if user data exists - user is nested inside data.user
         final userData = data['data']?['user'];
         if (userData == null) {
-          print('❌ ERROR: user field is null in response');
-          print('🔍 DEBUG: data structure: ${data}');
+          developer.log('❌ ERROR: user field is null in response', name: 'ApiService', level: 1000);
+          developer.log('🔍 DEBUG: data structure: $data', name: 'ApiService', level: 1000);
           return {
             'success': false,
             'message': 'Phản hồi thiếu trường user - Response: ${response.body}',
@@ -79,7 +80,7 @@ class ApiService {
         }
 
         if (userData is! Map<String, dynamic>) {
-          print('❌ ERROR: user field is not a Map, got ${userData.runtimeType}');
+          developer.log('❌ ERROR: user field is not a Map, got ${userData.runtimeType}', name: 'ApiService', level: 1000);
           return {
             'success': false,
             'message': 'Trường user không đúng định dạng - Response: ${response.body}',
@@ -112,7 +113,7 @@ class ApiService {
     } on FormatException {
       return {'success': false, 'message': 'Dữ liệu trả về không đúng định dạng.'};
     } catch (e) {
-      print('❌ Login error: $e');
+      developer.log('❌ Login error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi không xác định: $e'};
     }
   }
@@ -139,7 +140,7 @@ class ApiService {
         return _handleError(response);
       }
     } catch (e) {
-      print('❌ Get users error: $e');
+      developer.log('❌ Get users error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi khi lấy danh sách người dùng'};
     }
   }
@@ -163,11 +164,11 @@ class ApiService {
         }
         return [];
       } else {
-        print('❌ Get classes error: ${response.statusCode}');
+        developer.log('❌ Get classes error: ${response.statusCode}', name: 'ApiService', level: 1000);
         return [];
       }
     } catch (e) {
-      print('❌ Get classes error: $e');
+      developer.log('❌ Get classes error: $e', name: 'ApiService', level: 1000);
       return [];
     }
   }
@@ -176,7 +177,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getAttendanceRecords(String token, {String? classId}) async {
     try {
       if (classId == null) {
-        print('❌ Error: class_id is required for attendance records');
+        developer.log('❌ Error: class_id is required for attendance records', name: 'ApiService', level: 1000);
         return [];
       }
 
@@ -196,11 +197,11 @@ class ApiService {
         }
         return [];
       } else {
-        print('❌ Get attendance error: ${response.statusCode}');
+        developer.log('❌ Get attendance error: ${response.statusCode}', name: 'ApiService', level: 1000);
         return [];
       }
     } catch (e) {
-      print('❌ Get attendance error: $e');
+      developer.log('❌ Get attendance error: $e', name: 'ApiService', level: 1000);
       return [];
     }
   }
@@ -210,13 +211,13 @@ class ApiService {
     try {
       // Backend doesn't have generic POST /attendance/ endpoint
       // Attendance is created through specific methods: face, QR, or code
-      print('⚠️ Create attendance: Use specific attendance methods (face/QR/code)');
+      developer.log('⚠️ Create attendance: Use specific attendance methods (face/QR/code)', name: 'ApiService');
       return {
         'success': false,
         'message': 'Sử dụng các phương thức điểm danh cụ thể: face recognition, QR code, hoặc short code'
       };
     } catch (e) {
-      print('❌ Create attendance error: $e');
+      developer.log('❌ Create attendance error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi khi tạo bản ghi điểm danh'};
     }
   }
@@ -241,7 +242,7 @@ class ApiService {
         return _handleError(response);
       }
     } catch (e) {
-      print('❌ Face recognition error: $e');
+      developer.log('❌ Face recognition error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi nhận diện khuôn mặt'};
     }
   }
@@ -262,7 +263,7 @@ class ApiService {
         return _handleError(response);
       }
     } catch (e) {
-      print('❌ Create account error: $e');
+      developer.log('❌ Create account error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi khi tạo tài khoản'};
     }
   }
@@ -324,7 +325,7 @@ class ApiService {
           .toList();
       return instructors;
     } catch (e) {
-      print('❌ Get instructors error: $e');
+      developer.log('❌ Get instructors error: $e', name: 'ApiService', level: 1000);
       return [];
     }
   }
@@ -339,7 +340,7 @@ class ApiService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Connection test failed: $e');
+      developer.log('❌ Connection test failed: $e', name: 'ApiService', level: 1000);
       return false;
     }
   }
@@ -402,7 +403,7 @@ class ApiService {
           return {'success': false, 'message': 'Phương thức HTTP không được hỗ trợ'};
       }
 
-      print('🔍 DEBUG: $method $endpoint - ${response.statusCode}');
+      developer.log('🔍 DEBUG: $method $endpoint - ${response.statusCode}', name: 'ApiService');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) {
@@ -420,7 +421,7 @@ class ApiService {
     } on FormatException {
       return {'success': false, 'message': 'Dữ liệu trả về không đúng định dạng.'};
     } catch (e) {
-      print('❌ Authenticated request error: $e');
+      developer.log('❌ Authenticated request error: $e', name: 'ApiService', level: 1000);
       return {'success': false, 'message': 'Lỗi không xác định: $e'};
     }
   }

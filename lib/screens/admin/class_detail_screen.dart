@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:developer' as developer;
 import '../../models/class_model.dart';
 import '../../models/user.dart';
 import '../../models/attendance_model.dart';
 import '../../services/class_service.dart';
-import '../../services/auth_service.dart';
-import '../../widgets/camera_view.dart';
-import '../teacher/teacher_scan_screen.dart';
+import '../teacher/attendance_session_screen.dart';
 
 class ClassDetailScreen extends StatefulWidget {
   final ClassModel classModel;
@@ -27,8 +26,6 @@ class ClassDetailScreen extends StatefulWidget {
 }
 
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
-  final ClassService _classService = ClassService();
-  final AuthService _authService = AuthService();
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isProcessingAttendance = false;
@@ -36,7 +33,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   bool _isLoadingStudents = false;
   List<AttendanceModel> _attendanceList = [];
   List<User> _studentList = [];
-  Position? _currentPosition;
   String? _statusMessage;
   late ClassModel _currentClass;
   Timer? _realtimeUpdateTimer;
@@ -74,7 +70,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           });
         }
       } catch (e) {
-        print('Camera initialization error: $e');
+        developer.log('Camera initialization error: $e', name: 'ClassDetail.camera', level: 1000);
         setState(() {
           _statusMessage = "Camera không khả dụng";
         });
@@ -103,12 +99,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         }
       }
 
-      final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _currentPosition = position;
-      });
+      await Geolocator.getCurrentPosition();
     } catch (e) {
-      print('Location error: $e');
+      developer.log('Location error: $e', name: 'ClassDetail.location', level: 1000);
       setState(() {
         _statusMessage = "Lỗi lấy vị trí: $e";
       });
@@ -123,11 +116,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     try {
       final attendanceList = await ClassService.getAttendanceRecordsByClass(_currentClass.id);
       setState(() {
-        _attendanceList = attendanceList;
+        _attendanceList = attendanceList.map((item) => AttendanceModel.fromJson(item)).toList();
         _isLoadingAttendance = false;
       });
     } catch (e) {
-      print('Error loading attendance list: $e');
+      developer.log('Error loading attendance list: $e', name: 'ClassDetail.attendance', level: 1000);
       setState(() {
         _isLoadingAttendance = false;
         _statusMessage = "Lỗi tải danh sách điểm danh";
@@ -150,7 +143,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         _isLoadingStudents = false;
       });
     } catch (e) {
-      print('Error loading student list: $e');
+      developer.log('Error loading student list: $e', name: 'ClassDetail.students', level: 1000);
       setState(() {
         _isLoadingStudents = false;
       });
@@ -187,7 +180,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         attendanceCloseTime: newIsOpen ? null : DateTime.now(),
       );
 
-      await ClassService.updateClass(updatedClass);
+      await ClassService.updateClass(updatedClass.id, updatedClass.toJson());
 
       setState(() {
         _currentClass = updatedClass;
@@ -200,22 +193,26 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         _stopRealtimeUpdates();
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_currentClass.isAttendanceOpen
-              ? '✅ Đã mở buổi học - Sinh viên có thể điểm danh'
-              : '🔒 Đã chốt buổi học - Không thể điểm danh thêm'),
-          backgroundColor: _currentClass.isAttendanceOpen ? Colors.green : Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_currentClass.isAttendanceOpen
+                ? '✅ Đã mở buổi học - Sinh viên có thể điểm danh'
+                : '🔒 Đã chốt buổi học - Không thể điểm danh thêm'),
+            backgroundColor: _currentClass.isAttendanceOpen ? Colors.green : Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
-      print('Error toggling attendance: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lỗi khi thay đổi trạng thái điểm danh'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      developer.log('Error toggling attendance: $e', name: 'ClassDetail.toggle', level: 1000);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lỗi khi thay đổi trạng thái điểm danh'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -306,7 +303,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     });
 
     try {
-      final XFile file = await _cameraController!.takePicture();
+      await _cameraController!.takePicture();
 
       // Simulate face recognition and attendance processing
       await Future.delayed(const Duration(seconds: 3));
@@ -314,15 +311,14 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       final attendance = AttendanceModel(
         id: 'att_${DateTime.now().millisecondsSinceEpoch}',
         classId: _currentClass.id,
-        userId: widget.currentUser.id,
+        studentId: widget.currentUser.id,
+        timestamp: DateTime.now(),
         checkInTime: DateTime.now(),
-        photoPath: file.path,
-        latitude: _currentPosition?.latitude,
-        longitude: _currentPosition?.longitude,
+        method: 'faceid',
         status: AttendanceStatus.present,
       );
 
-      await ClassService.saveAttendanceRecord(attendance);
+      await ClassService.saveAttendanceRecord(attendance.toJson());
       await _loadAttendanceList();
 
       setState(() {
@@ -330,25 +326,29 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         _statusMessage = "✅ Điểm danh thành công!";
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Điểm danh thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Điểm danh thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      print('Attendance error: $e');
+      developer.log('Attendance error: $e', name: 'ClassDetail.attendanceProcess', level: 1000);
       setState(() {
         _isProcessingAttendance = false;
         _statusMessage = "Lỗi điểm danh: $e";
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi điểm danh: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi điểm danh: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -400,7 +400,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _getClassStatusColor().withOpacity(0.1),
+                    color: _getClassStatusColor().withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: _getClassStatusColor()),
                   ),
@@ -499,8 +499,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: _currentClass.isAttendanceOpen
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.orange.withOpacity(0.1),
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _currentClass.isAttendanceOpen ? Colors.green : Colors.orange,
@@ -629,10 +629,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => TeacherScanScreen(
-                                classModel: _currentClass,
+                              builder: (context) => AttendanceSessionScreen(
                                 currentUser: widget.currentUser,
-                                cameras: widget.cameras,
+                                classItem: _currentClass,
                               ),
                             ),
                           );
@@ -682,8 +681,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _currentClass.isAttendanceOpen
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _currentClass.isAttendanceOpen ? Colors.green : Colors.grey,
@@ -731,7 +730,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.blue),
                 ),
@@ -780,7 +779,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.green),
                     ),
@@ -813,7 +812,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.green),
                   ),
@@ -830,7 +829,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.red),
                   ),
@@ -916,7 +915,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -961,7 +960,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       leading: CircleAvatar(
-                        backgroundColor: statusColor.withOpacity(0.2),
+                        backgroundColor: statusColor.withValues(alpha: 0.2),
                         child: Icon(
                           Icons.person,
                           color: statusColor,
@@ -985,9 +984,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: statusColor.withOpacity(0.3)),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1115,10 +1114,10 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   final attendance = _attendanceList[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: attendance.statusColor.withOpacity(0.2),
+                      backgroundColor: _getStatusColorFromString(attendance.statusColor).withValues(alpha: 0.2),
                       child: Icon(
                         Icons.person,
-                        color: attendance.statusColor,
+                        color: _getStatusColorFromString(attendance.statusColor),
                         size: 20,
                       ),
                     ),
@@ -1136,13 +1135,13 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: attendance.statusColor.withOpacity(0.1),
+                        color: _getStatusColorFromString(attendance.statusColor).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         attendance.statusText,
                         style: TextStyle(
-                          color: attendance.statusColor,
+                          color: _getStatusColorFromString(attendance.statusColor),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1282,5 +1281,24 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to convert status color string to Color
+  Color _getStatusColorFromString(String statusColor) {
+    switch (statusColor.toLowerCase()) {
+      case 'green':
+        return Colors.green;
+      case 'red':
+        return Colors.red;
+      case 'orange':
+        return Colors.orange;
+      case 'blue':
+        return Colors.blue;
+      case 'grey':
+      case 'gray':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
 }

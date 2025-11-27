@@ -22,7 +22,7 @@ class _ClassListScreenState extends State<ClassListScreen> {
   List<ClassModel> _filteredClasses = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -241,7 +241,7 @@ class _ClassListScreenState extends State<ClassListScreen> {
           border: Border.all(color: Colors.grey[200]!),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

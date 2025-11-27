@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/class_model.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
+import 'dart:developer' as developer;
 
 class ClassStudentsScreen extends StatefulWidget {
   final ClassModel classItem;
@@ -23,10 +24,9 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
   List<Map<String, dynamic>> _availableStudents = [];
   List<Map<String, dynamic>> _filteredStudents = [];
   List<Map<String, dynamic>> _filteredAvailableStudents = [];
-  bool _isLoading = true;
-  bool _isLoadingStudents = true;
+    bool _isLoadingStudents = true;
   bool _isLoadingAvailable = true;
-  Set<String> _addingStudents = {}; // Track which students are being added
+  final Set<String> _addingStudents = {}; // Track which students are being added
 
   @override
   void initState() {
@@ -78,13 +78,11 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
         _filteredAvailableStudents = List.from(_availableStudents);
         _isLoadingStudents = false;
         _isLoadingAvailable = false;
-        _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _isLoadingStudents = false;
         _isLoadingAvailable = false;
-        _isLoading = false;
       });
       _showError('Lỗi khi tải dữ liệu: $e');
     }
@@ -143,11 +141,11 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
       final token = ApiService.getToken();
 
       // Debug logging
-      print('🔍 DEBUG: Adding student to class');
-      print('🔍 DEBUG: Student data: ${student}');
-      print('🔍 DEBUG: Student ID: $studentId');
-      print('🔍 DEBUG: Class ID: ${widget.classItem.id}');
-      print('🔍 DEBUG: Class type: ${widget.classItem.classType}');
+      developer.log('🔍 DEBUG: Adding student to class', name: 'ClassStudents.addStudent');
+      developer.log('🔍 DEBUG: Student data: $student', name: 'ClassStudents.addStudent');
+      developer.log('🔍 DEBUG: Student ID: $studentId', name: 'ClassStudents.addStudent');
+      developer.log('🔍 DEBUG: Class ID: ${widget.classItem.id}', name: 'ClassStudents.addStudent');
+      developer.log('🔍 DEBUG: Class type: ${widget.classItem.classType}', name: 'ClassStudents.addStudent');
 
       // Determine class type and update accordingly
       final classType = widget.classItem.classType;
@@ -165,13 +163,13 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
         if (!currentSubjectIds.contains(widget.classItem.id)) {
           currentSubjectIds.add(widget.classItem.id);
           updateData['subject_class_ids'] = currentSubjectIds;
-          print('🔍 DEBUG: Adding to existing subject classes: $currentSubjectIds');
+          developer.log('🔍 DEBUG: Adding to existing subject classes: $currentSubjectIds', name: 'ClassStudents.addStudent');
         } else {
-          print('🔍 DEBUG: Student already in this subject class');
+          developer.log('🔍 DEBUG: Student already in this subject class', name: 'ClassStudents.addStudent');
         }
       }
 
-      print('🔍 DEBUG: Update data: $updateData');
+      developer.log('🔍 DEBUG: Update data: $updateData', name: 'ClassStudents.addStudent');
 
       // Only send update if there's actual data to update
       if (updateData.isEmpty) {
@@ -180,7 +178,7 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
       }
 
       final result = await ApiService.updateUser(token, student['_id'], updateData);
-      print('🔍 DEBUG: API result: $result');
+      developer.log('🔍 DEBUG: API result: $result', name: 'ClassStudents.addStudent');
 
       if (result['success'] == true) {
         _showSuccess('Thêm sinh viên vào lớp thành công');
@@ -204,7 +202,7 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
         _showError(result['message'] ?? 'Không thể thêm sinh viên vào lớp');
       }
     } catch (e) {
-      print('🔍 DEBUG: Exception caught: $e');
+      developer.log('🔍 DEBUG: Exception caught: $e', name: 'ClassStudents.addStudent', level: 1000);
       _showError('Lỗi: $e');
     } finally {
       // Remove from loading set
@@ -309,18 +307,18 @@ class _ClassStudentsScreenState extends State<ClassStudentsScreen> {
               gradient: LinearGradient(
                 colors: [
                   widget.classItem.classType == 'academic'
-                      ? Colors.blue.withOpacity(0.1)
-                      : Colors.green.withOpacity(0.1),
+                      ? Colors.blue.withValues(alpha: 0.1)
+                      : Colors.green.withValues(alpha: 0.1),
                   widget.classItem.classType == 'academic'
-                      ? Colors.blue.withOpacity(0.05)
-                      : Colors.green.withOpacity(0.05),
+                      ? Colors.blue.withValues(alpha: 0.05)
+                      : Colors.green.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: widget.classItem.classType == 'academic'
-                    ? Colors.blue.withOpacity(0.3)
-                    : Colors.green.withOpacity(0.3),
+                    ? Colors.blue.withValues(alpha: 0.3)
+                    : Colors.green.withValues(alpha: 0.3),
               ),
             ),
             child: Column(

@@ -3,6 +3,7 @@ enum AttendanceStatus {
   absent,
   late,
   excused,
+  unknown,
 }
 
 class AttendanceModel {
@@ -73,6 +74,8 @@ class AttendanceModel {
         return 'Đi muộn';
       case AttendanceStatus.excused:
         return 'Có phép';
+      case AttendanceStatus.unknown:
+        return 'Chưa xác định';
     }
   }
 
@@ -90,5 +93,27 @@ class AttendanceModel {
       'check_out_time': checkOutTime?.toIso8601String(),
       'notes': notes,
     };
+  }
+
+  // Additional getters for admin screen compatibility
+  String get userId => studentId; // Alias for studentId
+
+  String get formattedCheckInTime {
+    return '${checkInTime.hour.toString().padLeft(2, '0')}:${checkInTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  String get statusColor {
+    switch (status) {
+      case AttendanceStatus.present:
+        return 'green';
+      case AttendanceStatus.absent:
+        return 'red';
+      case AttendanceStatus.late:
+        return 'orange';
+      case AttendanceStatus.excused:
+        return 'blue';
+      case AttendanceStatus.unknown:
+        return 'grey';
+    }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
+import 'dart:developer' as developer;
 
 // UI imports from HEAD branch (better UI)
 import 'core/theme/app_colors.dart';
@@ -23,9 +24,9 @@ Future<void> main() async {
   // Initialize cameras for all platforms with error handling
   try {
     cameras = await availableCameras();
-    print('✅ Available cameras: ${cameras?.length ?? 0}');
+    developer.log('✅ Available cameras: ${cameras?.length ?? 0}', name: 'Camera.init');
   } catch (e) {
-    print('⚠️ Camera initialization failed: $e');
+    developer.log('⚠️ Camera initialization failed: $e', name: 'Camera.error', level: 1000);
     cameras = [];
   }
 
@@ -195,17 +196,25 @@ class MyApp extends StatelessWidget {
         '/smart_register': (context) => const SmartRegisterScreen(),
         '/student_home': (context) => const StudentHomeScreen(),
         '/camera': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments;
-          return CameraView(classItem: args);
+          return CameraView(
+            cameras: cameras,
+            onControllerReady: (controller) {
+              // Camera controller ready callback
+            },
+          );
         },
       },
       onGenerateRoute: (settings) {
         // Handle dynamic routes with arguments
         switch (settings.name) {
           case '/camera':
-            final args = settings.arguments;
             return MaterialPageRoute(
-              builder: (context) => CameraView(classItem: args),
+              builder: (context) => CameraView(
+                cameras: cameras,
+                onControllerReady: (controller) {
+                  // Camera controller ready callback
+                },
+              ),
               settings: settings,
             );
           default:

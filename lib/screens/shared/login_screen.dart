@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
-import '../../services/admin_api_service.dart';
 import '../../services/api_service.dart';
 import 'home_screen.dart';
+import 'dart:developer' as developer;
 
 class LoginScreen extends StatefulWidget {
   final List<CameraDescription>? cameras;
@@ -138,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       // Try FastAPI first, fallback to AuthService
       try {
-        print('🔐 Attempting login via FastAPI...');
+        developer.log('🔐 Attempting login via FastAPI...', name: 'LoginScreen.api');
         final apiResult = await ApiService.login(
           _userIdController.text.trim(),
           _passwordController.text,
@@ -147,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (apiResult['success'] == true) {
           user = apiResult['user'] as User;
-          print('✅ Login successful via FastAPI');
+          developer.log('✅ Login successful via FastAPI', name: 'LoginScreen.api');
 
           // Save authentication state for future use
           await AuthService.saveAuthState(user);
@@ -155,8 +155,8 @@ class _LoginScreenState extends State<LoginScreen>
           throw Exception(apiResult['message'] ?? 'Đăng nhập thất bại');
         }
       } catch (e) {
-        print('⚠️ FastAPI login failed: $e');
-        print('🔄 Trying local authentication...');
+        developer.log('⚠️ FastAPI login failed: $e', name: 'LoginScreen.api', level: 900);
+        developer.log('🔄 Trying local authentication...', name: 'LoginScreen.local');
 
         // Fallback to local auth
         await AuthService.createDemoUsers();
@@ -251,6 +251,8 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           ElevatedButton(
             onPressed: () async {
+              // Capture context before async operation
+              final navigatorContext = context;
               Navigator.pop(context);
               setState(() => _isLoading = true);
 
@@ -263,12 +265,8 @@ class _LoginScreenState extends State<LoginScreen>
 
                 if (apiResult['success'] == true) {
                   final user = apiResult['user'] as User;
-                  if (mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => HomeScreen(currentUser: user),
-                      ),
-                    );
+                  if (mounted && navigatorContext.mounted) {
+                    Navigator.of(navigatorContext).pushReplacementNamed('/home', arguments: user);
                   }
                 } else {
                   setState(() {
@@ -305,9 +303,9 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(30),
             gradient: LinearGradient(
               colors: [
-                Colors.white.withOpacity(0.3),
-                Colors.white.withOpacity(0.1),
-                Colors.white.withOpacity(0.3),
+                Colors.white.withValues(alpha: 0.3),
+                Colors.white.withValues(alpha: 0.1),
+                Colors.white.withValues(alpha: 0.3),
               ],
               stops: [0.0, 0.5, 1.0],
               begin: Alignment(-1.0 + _shimmerAnimation.value, 0),
@@ -363,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen>
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: color.withOpacity(0.3),
+                      color: color.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -376,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen>
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+                  color: isSelected ? color.withValues(alpha: 0.1) : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -414,9 +412,9 @@ class _LoginScreenState extends State<LoginScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF667eea).withOpacity(_fadeAnimation.value),
-                  Color(0xFF764ba2).withOpacity(_fadeAnimation.value),
-                  Color(0xFFf093fb).withOpacity(_fadeAnimation.value * 0.8),
+                  Color(0xFF667eea).withValues(alpha: _fadeAnimation.value),
+                  Color(0xFF764ba2).withValues(alpha: _fadeAnimation.value),
+                  Color(0xFFf093fb).withValues(alpha: _fadeAnimation.value * 0.8),
                 ],
               ),
             ),
@@ -480,7 +478,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontWeight: FontWeight.w400,
                                     letterSpacing: 0.2,
                                   ),
@@ -498,12 +496,12 @@ class _LoginScreenState extends State<LoginScreen>
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 40,
                                   offset: const Offset(0, 20),
                                 ),
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -779,14 +777,14 @@ class _LoginScreenState extends State<LoginScreen>
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Color(0xFF667eea).withOpacity(0.1),
-                                        Color(0xFF764ba2).withOpacity(0.1)
+                                        Color(0xFF667eea).withValues(alpha: 0.1),
+                                        Color(0xFF764ba2).withValues(alpha: 0.1)
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Color(0xFF667eea).withOpacity(0.2)),
+                                    border: Border.all(color: Color(0xFF667eea).withValues(alpha: 0.2)),
                                   ),
                                   child: Column(
                                     children: [
@@ -795,7 +793,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           Container(
                                             padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              color: Color(0xFF667eea).withOpacity(0.2),
+                                              color: Color(0xFF667eea).withValues(alpha: 0.2),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -833,7 +831,7 @@ class _LoginScreenState extends State<LoginScreen>
                                             decoration: BoxDecoration(
                                               color: Colors.white,
                                               borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                                             ),
                                             child: const Text(
                                               'SV001/student123',
@@ -849,7 +847,7 @@ class _LoginScreenState extends State<LoginScreen>
                                             decoration: BoxDecoration(
                                               color: Colors.white,
                                               borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                                              border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
                                             ),
                                             child: const Text(
                                               'GV001/instructor123',
@@ -876,9 +874,9 @@ class _LoginScreenState extends State<LoginScreen>
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.1),
+                                  color: Colors.white.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -900,7 +898,7 @@ class _LoginScreenState extends State<LoginScreen>
                               Text(
                                 '© 2024 FaceID Attendance System',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
                               ),

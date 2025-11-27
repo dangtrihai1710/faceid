@@ -4,9 +4,9 @@ import '../../services/auth_service.dart';
 import '../admin/user_crud_screen.dart';
 import '../admin/class_crud_screen.dart';
 import '../teacher/teacher_class_management_screen.dart';
-import '../teacher/teacher_attendance_code_screen.dart';
 import '../student/student_dashboard_screen_new.dart';
 import 'login_screen.dart';
+import 'dart:developer' as developer;
 
 class HomeScreen extends StatefulWidget {
   final User? currentUser;
@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      print('Error loading current user: $e');
+      developer.log('Error loading current user: $e', name: 'HomeScreen.user', level: 1000);
     }
   }
 
@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Mã: ${_currentUser?.userId ?? ""} | Vai trò: ${_getRoleText(_currentUser?.role ?? "")}',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
