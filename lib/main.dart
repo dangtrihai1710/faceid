@@ -195,7 +195,10 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreenApi(),
         '/register': (context) => const RegisterScreen(),
         '/smart_register': (context) => const SmartRegisterScreen(),
-        '/student_home': (context) => const StudentHomeScreen(),
+        '/student_home': (context) {
+          // This route should not be used directly, use AuthWrapper instead
+          return const LoginScreenApi();
+        },
         '/teacher_home': (context) => TeacherHomeScreen(
           currentUser: User(
             id: '',
@@ -285,6 +288,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     // Show home screen based on user role
-    return StudentHomeScreen();
+    return StudentHomeScreen(currentUser: _currentUser!);
   }
 }

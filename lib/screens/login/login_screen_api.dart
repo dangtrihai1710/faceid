@@ -155,8 +155,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => StudentHomeScreen(),
-              settings: RouteSettings(arguments: currentUser),
+              builder: (context) => StudentHomeScreen(currentUser: currentUser),
             ),
           );
         } else {

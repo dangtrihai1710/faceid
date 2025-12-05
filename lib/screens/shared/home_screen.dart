@@ -4,7 +4,7 @@ import '../../services/auth_service.dart';
 import '../admin/user_crud_screen.dart';
 import '../admin/class_crud_screen.dart';
 import '../teacher/teacher_class_management_screen.dart';
-import '../student/student_dashboard_screen_new.dart';
+import '../home/student_home_screen.dart';
 import 'login_screen.dart';
 import 'dart:developer' as developer;
 
@@ -286,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'onTap': () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => StudentDashboardScreenNew(currentUser: _currentUser!),
+                builder: (context) => StudentHomeScreen(currentUser: _currentUser!),
               ),
             );
           },
