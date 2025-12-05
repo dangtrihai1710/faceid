@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
-import '../shared/login_screen.dart';
+import '../login/login_screen_api.dart';
 import '../../core/services/api_service.dart' as CoreApi;
 
 class TeacherProfileScreen extends StatefulWidget {
@@ -109,7 +109,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
   void _logout(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) => const LoginScreen(),
+        builder: (context) => const LoginScreenApi(),
       ),
       (Route<dynamic> route) => false,
     );
