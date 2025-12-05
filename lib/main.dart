@@ -10,11 +10,12 @@ import 'screens/login/login_screen_api.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/smart_register_screen.dart';
 import 'screens/home/student_home_screen.dart';
+import 'screens/home/teacher_home_screen.dart';
 import 'widgets/camera_view.dart';
+import 'models/user.dart';
 
 // Auth service from origin/HoangHai branch
 import 'services/auth_service.dart';
-import 'models/user.dart';
 
 List<CameraDescription>? cameras;
 
@@ -195,6 +196,16 @@ class MyApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/smart_register': (context) => const SmartRegisterScreen(),
         '/student_home': (context) => const StudentHomeScreen(),
+        '/teacher_home': (context) => TeacherHomeScreen(
+          currentUser: User(
+            id: '',
+            userId: '',
+            email: '',
+            fullName: '',
+            token: '',
+            role: 'teacher',
+          ),
+        ),
         '/camera': (context) {
           return CameraView(
             cameras: cameras,

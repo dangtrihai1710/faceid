@@ -729,4 +729,670 @@ class ApiService {
       return [];
     }
   }
+
+  // Teacher-specific methods
+  static Future<List<Map<String, dynamic>>> getTeacherClasses() async {
+    if (!ensureAuthenticated()) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      // Use the general classes endpoint which supports role-based filtering
+      final response = await _dio.get(
+        '/api/v1/classes/',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> classesData = response.data['data'] ?? [];
+        debugPrint('✅ Loaded ${classesData.length} teacher classes from API');
+        return classesData.map((classData) => Map<String, dynamic>.from(classData)).toList();
+      } else {
+        debugPrint('❌ Failed to get teacher classes: ${response.data}');
+        return [];
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ DioException getting teacher classes: ${e.response?.data ?? e.message}');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Error getting teacher classes: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getTeacherTodayClasses() async {
+    if (!ensureAuthenticated()) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      // Use the general classes endpoint with date filter
+      final response = await _dio.get(
+        '/api/v1/classes/',
+        queryParameters: {'class_status': 'active'}, // Filter for active classes
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> classesData = response.data['data'] ?? [];
+        // Filter for today's classes on client side
+        final today = DateTime.now();
+        final todayClasses = classesData.where((classData) {
+          // Simple date check - you might want to improve this logic
+          final classDate = DateTime.tryParse(classData['schedule']?['date'] ?? '');
+          return classDate != null &&
+                 classDate.year == today.year &&
+                 classDate.month == today.month &&
+                 classDate.day == today.day;
+        }).toList();
+
+        debugPrint('✅ Loaded ${todayClasses.length} today classes from API');
+        return todayClasses.map((classData) => Map<String, dynamic>.from(classData)).toList();
+      } else {
+        debugPrint('❌ Failed to get today classes: ${response.data}');
+        return [];
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ DioException getting today classes: ${e.response?.data ?? e.message}');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Error getting today classes: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTeacherStats() async {
+    if (!ensureAuthenticated()) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      // Get teacher classes and calculate stats
+      final teacherClasses = await getTeacherClasses();
+
+      int totalStudents = 0;
+      int activeClasses = 0;
+
+      for (final classData in teacherClasses) {
+        final studentIds = classData['student_ids'] ?? classData['studentIds'] ?? [];
+        totalStudents += (studentIds as List).length;
+
+        final status = classData['status'] ?? 'active';
+        if (status == 'active') {
+          activeClasses++;
+        }
+      }
+
+      final stats = {
+        'totalClasses': teacherClasses.length,
+        'totalStudents': totalStudents,
+        'todayAttendance': 0, // Would need attendance API to calculate this
+        'activeClasses': activeClasses,
+      };
+
+      debugPrint('✅ Calculated teacher stats: $stats');
+      return stats;
+    } catch (e) {
+      debugPrint('❌ Error calculating teacher stats: $e');
+      return {
+        'totalClasses': 0,
+        'totalStudents': 0,
+        'todayAttendance': 0,
+        'activeClasses': 0,
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> saveManualAttendance(String classId, Map<String, dynamic> attendanceData) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to save attendance',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/attendance/manual/$classId',
+        data: attendanceData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to save attendance',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> enrollStudents(String classId, List<String> studentIds) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to enroll students',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/classes/$classId/enroll',
+        data: {'student_ids': studentIds},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to enroll students',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> removeStudents(String classId, List<String> studentIds) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to remove students',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/classes/$classId/remove-students',
+        data: {'student_ids': studentIds},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to remove students',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> startAttendanceSession(String classId, Map<String, dynamic> sessionData) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to start attendance session',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/classes/$classId/start-attendance-session',
+        data: sessionData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to start attendance session',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> stopAttendanceSession(String classId) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to stop attendance session',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/classes/$classId/stop-attendance-session',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to stop attendance session',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getAttendanceRecords(String classId, {String? date}) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to get attendance records',
+      };
+    }
+
+    await _initialize();
+    try {
+      final queryParams = <String, dynamic>{};
+      if (date != null) {
+        queryParams['date'] = date;
+      }
+
+      final response = await _dio.get(
+        '/api/v1/attendance/$classId',
+        queryParameters: queryParams,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to get attendance records',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getTeacherStatistics(String teacherId) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to get statistics',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.get(
+        '/api/v1/users/$teacherId/statistics',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to get statistics',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getTeacherClassesWithStats({bool includeStats = true}) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to get classes',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.get(
+        '/api/v1/classes/',
+        queryParameters: includeStats ? {'include_stats': 'true'} : null,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to get classes',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> updateUserProfile(String userId, Map<String, dynamic> profileData) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to update profile',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.put(
+        '/api/v1/users/$userId',
+        data: profileData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to update profile',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> changePassword(String userId, Map<String, dynamic> passwordData) async {
+    if (!ensureAuthenticated()) {
+      return {
+        'success': false,
+        'message': 'Please login first to change password',
+      };
+    }
+
+    await _initialize();
+    try {
+      final response = await _dio.post(
+        '/api/v1/users/$userId/change-password',
+        data: passwordData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Failed to change password',
+        };
+      }
+    } on DioException catch (e) {
+      if (e.response?.data?['detail'] != null) {
+        return {
+          'success': false,
+          'message': e.response!.data['detail'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Network error: ${e.message}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unexpected error: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>?> createAttendanceCode(String classId, {Duration? duration}) async {
+    debugPrint('🔍 API: createAttendanceCode called with classId: "$classId", duration: ${duration?.inMinutes ?? 'null'} minutes');
+
+    if (!ensureAuthenticated()) {
+      debugPrint('🔍 API: Authentication check failed');
+      throw Exception('User not authenticated');
+    }
+
+    debugPrint('🔍 API: Authentication check passed, token: ${_authToken?.substring(0, 20) ?? 'null'}...');
+
+    try {
+      final Map<String, dynamic> requestData = {
+        'class_id': classId,
+        if (duration != null) 'duration_minutes': duration.inMinutes,
+      };
+
+      debugPrint('🔍 API: Request data: $requestData');
+      debugPrint('🔍 API: Making POST request to /api/v1/attendance/code');
+
+      final response = await _dio.post(
+        '/api/v1/attendance/code',
+        data: requestData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+          },
+        ),
+      );
+
+      debugPrint('🔍 API: Response received');
+      debugPrint('🔍 API: Status code: ${response.statusCode}');
+      debugPrint('🔍 API: Response data: ${response.data}');
+      debugPrint('🔍 API: Response data type: ${response.data.runtimeType}');
+
+      if (response.statusCode == 201 && response.data['success'] == true) {
+        debugPrint('✅ API: Created attendance code successfully');
+        debugPrint('🔍 API: Returning data: ${response.data['data']}');
+        return response.data['data'];
+      } else {
+        debugPrint('❌ API: Failed to create attendance code');
+        debugPrint('🔍 API: Status code check: ${response.statusCode == 201}');
+        debugPrint('🔍 API: Success check: ${response.data['success']}');
+        debugPrint('🔍 API: Full response: ${response.data}');
+        return null;
+      }
+    } on DioException catch (e) {
+      debugPrint('🔍 API: DioException caught');
+      debugPrint('🔍 API: Exception type: ${e.type}');
+      debugPrint('🔍 API: Exception message: ${e.message}');
+      debugPrint('🔍 API: Response status: ${e.response?.statusCode}');
+      debugPrint('🔍 API: Response data: ${e.response?.data}');
+      return null;
+    } catch (e) {
+      debugPrint('🔍 API: Generic error caught: $e');
+      debugPrint('🔍 API: Error type: ${e.runtimeType}');
+      return null;
+    }
+  }
 }

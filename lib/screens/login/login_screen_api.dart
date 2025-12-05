@@ -3,7 +3,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/services/api_service.dart';
-import '../../core/models/user_models.dart';
+import '../../core/models/user_models.dart' as user_models;
+import '../home/teacher_home_screen.dart';
+import '../home/student_home_screen.dart';
+import '../../models/user.dart';
 
 class LoginScreenApi extends StatefulWidget {
   const LoginScreenApi({super.key});
@@ -28,7 +31,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-    List<DemoAccount> _demoAccounts = [];
+    List<user_models.DemoAccount> _demoAccounts = [];
 
   @override
   void initState() {
@@ -90,14 +93,14 @@ class _LoginScreenApiState extends State<LoginScreenApi>
     // Set default demo accounts for quick login
     setState(() {
       _demoAccounts = [
-        DemoAccount(
+        user_models.DemoAccount(
           userCode: 'SV001',
           password: 'student123',
           role: 'student',
           fullName: 'Test Student',
           description: 'Student demo account',
         ),
-        DemoAccount(
+        user_models.DemoAccount(
           userCode: 'GV001',
           password: 'teacher123',
           role: 'instructor',
@@ -144,9 +147,26 @@ class _LoginScreenApiState extends State<LoginScreenApi>
 
         debugPrint('✅ Login successful: ${user['fullName']}');
 
-        // Navigate based on user role
-        final route = user['role'] == 'student' ? '/student_home' : '/teacher_home';
-        Navigator.pushReplacementNamed(context, route);
+        // Create User object from API response
+        final User currentUser = User.fromJson(user);
+
+        // Navigate based on user role with user data
+        if (user['role'] == 'student') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StudentHomeScreen(),
+              settings: RouteSettings(arguments: currentUser),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TeacherHomeScreen(currentUser: currentUser),
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -171,7 +191,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
     }
   }
 
-  void _fillDemoAccount(DemoAccount account) {
+  void _fillDemoAccount(user_models.DemoAccount account) {
     setState(() {
       _userIdController.text = account.userCode;
       _passwordController.text = account.password;
@@ -244,7 +264,7 @@ class _LoginScreenApiState extends State<LoginScreenApi>
                     });
 
                     try {
-                      // TODO: Implement API call for password reset
+                      // API call for password reset will be implemented in future release
                       // For now, just show success message
                       await Future.delayed(const Duration(seconds: 1));
 

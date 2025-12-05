@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'dart:developer' as developer;
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../services/api_service.dart';
+import '../../core/services/api_service.dart' as CoreApi;
 import 'teacher_attendance_code_screen.dart';
 import 'teacher_class_students_screen.dart';
 
 class TeacherClassManagementScreen extends StatefulWidget {
   final User currentUser;
+  final bool showAsTab; // New parameter to control Scaffold
 
   const TeacherClassManagementScreen({
     super.key,
     required this.currentUser,
+    this.showAsTab = false, // Default to full screen
   });
 
   @override
@@ -30,6 +33,34 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+
+    // Check authentication first
+    _checkAuthentication();
+  }
+
+  void _checkAuthentication() {
+    final hasToken = CoreApi.ApiService.hasToken();
+    developer.log('🔑 Authentication check: ${hasToken ? "Has token" : "No token"}', name: 'TeacherClassManagement');
+
+    if (!hasToken) {
+      // No token, redirect to login
+      developer.log('🚫 No authentication token found, redirecting to login', name: 'TeacherClassManagement');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng đăng nhập để tiếp tục'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      });
+      return;
+    }
+
+    // Token exists, proceed to load classes
+    developer.log('✅ Authentication passed, loading classes', name: 'TeacherClassManagement');
     _loadClasses();
   }
 
@@ -44,13 +75,9 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
 
     try {
       // Fetch all classes without instructor_id parameter to avoid ClientException
-      final response = await ApiService.makeAuthenticatedRequest(
-        'GET',
-        '/api/v1/classes/?per_page=100',
-      );
+      final classesData = await CoreApi.ApiService.getTeacherClasses();
 
-      if (response['success'] == true && response['data'] != null) {
-        final classesData = response['data'] as List;
+      if (classesData.isNotEmpty) {
         final allClasses = classesData.map((json) => ClassModel.fromJson(json)).toList();
 
         // Filter classes by current instructor (client-side filtering only)
@@ -67,17 +94,35 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
           });
         }
       } else {
-        throw Exception(response['message'] ?? 'Failed to load classes');
+        throw Exception('Failed to load classes');
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi tải dữ liệu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+
+        // Check if it's an authentication error
+        final errorMessage = e.toString();
+        if (errorMessage.contains('403') || errorMessage.contains('Not authenticated') || errorMessage.contains('token')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          // Navigate to login screen (assuming route name is '/login')
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/login');
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi tải dữ liệu: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -107,12 +152,58 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
   
   @override
   Widget build(BuildContext context) {
+    Widget content = _isLoading
+        ? const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Đang tải dữ liệu...'),
+              ],
+            ),
+          )
+        : RefreshIndicator(
+            onRefresh: _loadClasses,
+            child: Column(
+              children: [
+                if (!widget.showAsTab) ...[
+                  // Only show search and filter when not in tab mode
+                  _buildSearchAndFilter(),
+                  _buildStatsRow(),
+                ],
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildClassList(_filteredClasses.where((c) => c.isToday).toList()),
+                      _buildClassList(_filteredClasses.where((c) => c.isOngoing).toList()),
+                      _buildClassList(_filteredClasses),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+
+    // Return content directly if used as tab, otherwise wrap in Scaffold
+    if (widget.showAsTab) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Quản lý lớp học'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: _createNewClass,
+            icon: const Icon(Icons.add),
+            tooltip: 'Tạo lớp học mới',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -125,36 +216,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Đang tải dữ liệu...'),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadClasses,
-              child: Column(
-                children: [
-                  _buildSearchAndFilter(),
-                  _buildStatsRow(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildClassList(_filteredClasses.where((c) => c.isToday).toList()),
-                        _buildClassList(_filteredClasses.where((c) => c.isOngoing).toList()),
-                        _buildClassList(_filteredClasses),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: content,
     );
   }
 
@@ -365,6 +427,13 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
                     ],
                   ),
                 ),
+                // Edit button
+                IconButton(
+                  onPressed: () => _editClass(classModel),
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Chỉnh sửa lớp học',
+                  color: Colors.blue,
+                ),
                 if (classModel.isOngoing)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -554,6 +623,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
     );
   }
 
+
   
   void _generateQRCode(ClassModel classModel) {
     Navigator.of(context).push(
@@ -598,6 +668,42 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
       SnackBar(
         content: Text('Tính năng quét mặt điểm danh đang được phát triển cho lớp: ${classModel.displayName}'),
         backgroundColor: Colors.teal,
+      ),
+    );
+  }
+
+  void _createNewClass() {
+    // Navigate to class creation screen
+    // For now, show a dialog with basic class creation
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tạo lớp học mới'),
+        content: const Text('Tính năng tạo lớp học đang được phát triển. Vui lòng liên hệ admin để tạo lớp.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editClass(ClassModel classModel) {
+    // Navigate to class editing screen
+    // For now, show a dialog with basic class editing
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chỉnh sửa lớp: ${classModel.displayName}'),
+        content: const Text('Tính năng chỉnh sửa lớp học đang được phát triển. Vui lòng liên hệ admin để chỉnh sửa.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
       ),
     );
   }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:developer' as developer;
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../services/api_service.dart';
+import '../../core/services/api_service.dart' as CoreApi;
 
 class TeacherScheduleScreen extends StatefulWidget {
   final User currentUser;
@@ -38,6 +39,32 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
+    _checkAuthentication();
+  }
+
+  void _checkAuthentication() {
+    final hasToken = CoreApi.ApiService.hasToken();
+    developer.log('🔑 Authentication check in schedule screen: ${hasToken ? "Has token" : "No token"}', name: 'TeacherSchedule');
+
+    if (!hasToken) {
+      // No token, redirect to login
+      developer.log('🚫 No authentication token found in schedule screen, redirecting to login', name: 'TeacherSchedule');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng đăng nhập để tiếp tục'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      });
+      return;
+    }
+
+    // Token exists, proceed to load data
+    developer.log('✅ Authentication passed in schedule screen, loading data', name: 'TeacherSchedule');
     _loadData();
     _animationController.forward();
   }
@@ -53,13 +80,9 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.makeAuthenticatedRequest(
-        'GET',
-        '/api/v1/classes/?per_page=100',
-      );
+      final classesData = await CoreApi.ApiService.getTeacherClasses();
 
-      if (response['success'] == true && response['data'] != null) {
-        final classesData = response['data'] as List;
+      if (classesData.isNotEmpty) {
         final classes = classesData.map((json) => ClassModel.fromJson(json)).toList();
 
         if (mounted) {
@@ -71,7 +94,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
           });
         }
       } else {
-        throw Exception(response['message'] ?? 'Failed to load schedule');
+        throw Exception('Failed to load schedule');
       }
     } catch (e) {
       if (mounted) {

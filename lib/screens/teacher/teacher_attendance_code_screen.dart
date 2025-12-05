@@ -3,7 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:math';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../services/api_service.dart';
+import '../../core/services/api_service.dart' as CoreApi;
 import 'dart:developer' as developer;
 
 class TeacherAttendanceCodeScreen extends StatefulWidget {
@@ -73,13 +73,9 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
         'expires_in_minutes': _validDuration,
       };
 
-      final response = await ApiService.makeAuthenticatedRequest(
-        'POST',
-        '/api/v1/classes/${widget.classModel.id}/start-attendance-session',
-        body: sessionData,
-      );
+      final response = await CoreApi.ApiService.startAttendanceSession(widget.classModel.id, sessionData);
 
-      if (response['success'] == true) {
+      if (response != null && response['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -92,7 +88,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
         // Start checking attendance
         _startAttendanceMonitoring();
       } else {
-        throw Exception(response['message'] ?? 'Failed to create session');
+        throw Exception(response?['message'] ?? 'Failed to create session');
       }
     } catch (e) {
       setState(() {
@@ -121,12 +117,9 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
   Future<void> _checkAttendanceUpdates() async {
     try {
       // Get attendance records for the class
-      final response = await ApiService.makeAuthenticatedRequest(
-        'GET',
-        '/api/v1/attendance/${widget.classModel.id}',
-      );
+      final response = await CoreApi.ApiService.getAttendanceRecords(widget.classModel.id);
 
-      if (response['success'] == true && response['data'] != null) {
+      if (response != null && response['success'] == true && response['data'] != null) {
         final attendees = response['data'] as List;
         setState(() {
           _attendanceList = attendees.map((attendee) => {
@@ -161,10 +154,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
   void _endSession() async {
     try {
       // Stop the attendance session on the backend
-      await ApiService.makeAuthenticatedRequest(
-        'POST',
-        '/api/v1/classes/${widget.classModel.id}/stop-attendance-session',
-      );
+      await CoreApi.ApiService.stopAttendanceSession(widget.classModel.id);
     } catch (e) {
       developer.log('Error stopping session: $e', name: 'TeacherAttendanceCode.stop', level: 1000);
     }

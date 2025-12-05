@@ -7,18 +7,29 @@ import '../models/class_model.dart';
 
 class ApiService {
   // Change this to your FastAPI server URL
-  static const String _baseUrl = 'http://127.0.0.1:8002'; // Fixed to match backend port
-  // For mobile testing, use your computer's IP address
-  // static const String _baseUrl = 'http://192.168.1.100:8000'; // Replace with your IP
+  static const String _baseUrl = 'http://192.168.100.142:8000'; // Fixed to match backend server
+  // For local testing, use localhost
+  // static const String _baseUrl = 'http://127.0.0.1:8000'; // For same machine testing
 
   static String _token = '';
 
   static void setToken(String token) {
     _token = token;
+    developer.log('🔑 Token set: ${token.isNotEmpty ? "Set (${token.length} chars)" : "Empty"}', name: 'ApiService');
   }
 
   static String getToken() {
+    developer.log('🔑 Token retrieved: ${_token.isNotEmpty ? "Set (${_token.length} chars)" : "Empty"}', name: 'ApiService');
     return _token;
+  }
+
+  static void clearToken() {
+    _token = '';
+    developer.log('🔑 Token cleared', name: 'ApiService');
+  }
+
+  static bool hasToken() {
+    return _token.isNotEmpty;
   }
 
   static Map<String, String> _getHeaders() {
