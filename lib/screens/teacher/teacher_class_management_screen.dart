@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 import 'teacher_attendance_code_screen.dart';
 import 'teacher_class_students_screen.dart';
 
@@ -39,7 +39,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
   }
 
   void _checkAuthentication() {
-    final hasToken = CoreApi.ApiService.hasToken();
+    final hasToken = core_api.ApiService.hasToken();
     developer.log('🔑 Authentication check: ${hasToken ? "Has token" : "No token"}', name: 'TeacherClassManagement');
 
     if (!hasToken) {
@@ -75,7 +75,7 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
 
     try {
       // Fetch all classes without instructor_id parameter to avoid ClientException
-      final classesData = await CoreApi.ApiService.getTeacherClasses();
+      final classesData = await core_api.ApiService.getTeacherClasses();
 
       if (classesData.isNotEmpty) {
         final allClasses = classesData.map((json) => ClassModel.fromJson(json)).toList();
@@ -197,13 +197,6 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
         title: const Text('Quản lý lớp học'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _createNewClass,
-            icon: const Icon(Icons.add),
-            tooltip: 'Tạo lớp học mới',
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -426,13 +419,6 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
                       ),
                     ],
                   ),
-                ),
-                // Edit button
-                IconButton(
-                  onPressed: () => _editClass(classModel),
-                  icon: const Icon(Icons.edit),
-                  tooltip: 'Chỉnh sửa lớp học',
-                  color: Colors.blue,
                 ),
                 if (classModel.isOngoing)
                   Container(
@@ -672,39 +658,4 @@ class _TeacherClassManagementScreenState extends State<TeacherClassManagementScr
     );
   }
 
-  void _createNewClass() {
-    // Navigate to class creation screen
-    // For now, show a dialog with basic class creation
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tạo lớp học mới'),
-        content: const Text('Tính năng tạo lớp học đang được phát triển. Vui lòng liên hệ admin để tạo lớp.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _editClass(ClassModel classModel) {
-    // Navigate to class editing screen
-    // For now, show a dialog with basic class editing
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Chỉnh sửa lớp: ${classModel.displayName}'),
-        content: const Text('Tính năng chỉnh sửa lớp học đang được phát triển. Vui lòng liên hệ admin để chỉnh sửa.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
 }

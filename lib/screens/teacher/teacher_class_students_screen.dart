@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
 import '../../models/student_model.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 import 'teacher_attendance_code_screen.dart';
 import 'dart:developer' as developer;
 
@@ -33,7 +33,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
   }
 
   void _checkAuthentication() {
-    final hasToken = CoreApi.ApiService.hasToken();
+    final hasToken = core_api.ApiService.hasToken();
     developer.log('🔑 Authentication check in students screen: ${hasToken ? "Has token" : "No token"}', name: 'TeacherClassStudents');
 
     if (!hasToken) {
@@ -223,11 +223,6 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            onPressed: _addStudents,
-            icon: const Icon(Icons.person_add),
-            tooltip: 'Thêm sinh viên',
-          ),
           IconButton(
             onPressed: _showAttendanceOptions,
             icon: const Icon(Icons.more_vert),
@@ -432,45 +427,31 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
               ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Remove student button
-            IconButton(
-              onPressed: () => _removeStudent(student.id, student.fullName),
-              icon: const Icon(Icons.remove_circle),
-              color: Colors.red,
-              tooltip: 'Xóa sinh viên khỏi lớp',
-              iconSize: 20,
-            ),
-            // Attendance status
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getStatusColor(status).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _getStatusColor(status).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _getStatusIcon(status),
+                size: 16,
+                color: _getStatusColor(status),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _getStatusIcon(status),
-                    size: 16,
-                    color: _getStatusColor(status),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _getStatusText(status),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _getStatusColor(status),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 4),
+              Text(
+                _getStatusText(status),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _getStatusColor(status),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         onTap: () => _toggleAttendance(student.id),
       ),
@@ -548,7 +529,7 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
         'attendance_updates': attendanceUpdates,
       };
 
-      final result = await CoreApi.ApiService.saveManualAttendance(widget.classModel.id, attendanceData);
+      final result = await core_api.ApiService.saveManualAttendance(widget.classModel.id, attendanceData);
 
       if (result != null && result['success'] == true) {
         if (mounted) {
@@ -598,197 +579,4 @@ class _TeacherClassStudentsScreenState extends State<TeacherClassStudentsScreen>
     );
   }
 
-  void _addStudents() {
-    // Show dialog to add students
-    showDialog(
-      context: context,
-      builder: (context) => AddStudentsDialog(
-        classModel: widget.classModel,
-        onStudentsAdded: _onStudentsAdded,
-      ),
-    );
-  }
-
-  void _onStudentsAdded() {
-    // Refresh the student list
-    _loadStudents();
-  }
-
-  void _removeStudent(String studentId, String studentName) {
-    // Show confirmation dialog to remove student
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa sinh viên'),
-        content: Text('Bạn có chắc muốn xóa sinh viên $studentName khỏi lớp này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _confirmRemoveStudent(studentId, studentName);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmRemoveStudent(String studentId, String studentName) async {
-    try {
-      // Call API to remove student from class
-      final result = await CoreApi.ApiService.removeStudents(widget.classModel.id, [studentId]);
-
-      if (result != null && result['success'] == true) {
-        // Refresh the student list
-        _loadStudents();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Đã xóa sinh viên $studentName khỏi lớp'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
-        throw Exception(result?['message'] ?? 'Failed to remove student');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi khi xóa sinh viên: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-}
-
-// Dialog for adding students to class
-class AddStudentsDialog extends StatefulWidget {
-  final ClassModel classModel;
-  final VoidCallback onStudentsAdded;
-
-  const AddStudentsDialog({
-    super.key,
-    required this.classModel,
-    required this.onStudentsAdded,
-  });
-
-  @override
-  State<AddStudentsDialog> createState() => _AddStudentsDialogState();
-}
-
-class _AddStudentsDialogState extends State<AddStudentsDialog> {
-  final TextEditingController _studentIdsController = TextEditingController();
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // No need to load students, use text input instead
-  }
-
-  @override
-  void dispose() {
-    _studentIdsController.dispose();
-    super.dispose();
-  }
-
-  // Simplified: no need to load available students, just use text input
-
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Thêm sinh viên vào lớp'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('Nhập ID sinh viên (cách nhau bằng dấu phẩy):'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _studentIdsController,
-            decoration: const InputDecoration(
-              hintText: 'Ví dụ: SV001, SV002, SV003',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 3,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _addStudentsFromInput,
-          child: _isLoading ? const CircularProgressIndicator() : const Text('Thêm'),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _addStudentsFromInput() async {
-    final input = _studentIdsController.text.trim();
-    if (input.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập ID sinh viên')),
-      );
-      return;
-    }
-
-    // Parse student IDs from input
-    final studentIds = input
-        .split(',')
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty)
-        .toList();
-
-    if (studentIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy ID sinh viên hợp lệ')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await CoreApi.ApiService.enrollStudents(widget.classModel.id, studentIds);
-
-      if (result != null && result['success'] == true) {
-        widget.onStudentsAdded();
-        Navigator.of(context).pop();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đã thêm ${result['data']['enrolled_count']} sinh viên vào lớp'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        throw Exception(result?['message'] ?? 'Failed to add students');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi khi thêm sinh viên: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
 }

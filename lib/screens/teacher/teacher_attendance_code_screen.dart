@@ -3,7 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:math';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 import 'dart:developer' as developer;
 
 class TeacherAttendanceCodeScreen extends StatefulWidget {
@@ -73,7 +73,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
         'expires_in_minutes': _validDuration,
       };
 
-      final response = await CoreApi.ApiService.startAttendanceSession(widget.classModel.id, sessionData);
+      final response = await core_api.ApiService.startAttendanceSession(widget.classModel.id, sessionData);
 
       if (response != null && response['success'] == true) {
         if (mounted) {
@@ -117,7 +117,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
   Future<void> _checkAttendanceUpdates() async {
     try {
       // Get attendance records for the class
-      final response = await CoreApi.ApiService.getAttendanceRecords(widget.classModel.id);
+      final response = await core_api.ApiService.getAttendanceRecords(widget.classModel.id);
 
       if (response != null && response['success'] == true && response['data'] != null) {
         final attendees = response['data'] as List;
@@ -154,7 +154,7 @@ class _TeacherAttendanceCodeScreenState extends State<TeacherAttendanceCodeScree
   void _endSession() async {
     try {
       // Stop the attendance session on the backend
-      await CoreApi.ApiService.stopAttendanceSession(widget.classModel.id);
+      await core_api.ApiService.stopAttendanceSession(widget.classModel.id);
     } catch (e) {
       developer.log('Error stopping session: $e', name: 'TeacherAttendanceCode.stop', level: 1000);
     }

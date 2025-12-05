@@ -7,7 +7,7 @@ import '../teacher/teacher_attendance_management_screen.dart';
 import '../teacher/teacher_schedule_screen.dart';
 import '../teacher/teacher_report_screen.dart';
 import '../teacher/teacher_profile_screen.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 
 class TeacherHomeScreen extends StatefulWidget {
   final User currentUser;
@@ -90,7 +90,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Future<void> _loadClasses() async {
     try {
       // Use getStudentClasses API endpoint which is available and works
-      final classesData = await CoreApi.ApiService.getStudentClasses();
+      final classesData = await core_api.ApiService.getStudentClasses();
       setState(() {
         _todayClasses = classesData.isEmpty ? _getFallbackClasses() : classesData;
       });
@@ -106,7 +106,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Future<void> _loadBasicStats() async {
     try {
       // Try to get real statistics from API
-      final statsResponse = await CoreApi.ApiService.getTeacherStatistics(_currentUser.userId);
+      final statsResponse = await core_api.ApiService.getTeacherStatistics(_currentUser.userId);
 
       if (statsResponse != null && statsResponse['success'] == true) {
         final statsData = statsResponse['data'] ?? {};
@@ -643,7 +643,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       debugPrint('🔄 Creating attendance code for class: $className');
       debugPrint('🔍 DEBUG: About to call ApiService.createAttendanceCode...');
 
-      final result = await CoreApi.ApiService.createAttendanceCode(
+      final result = await core_api.ApiService.createAttendanceCode(
         classId,
         duration: const Duration(minutes: 15), // 15 minutes default
       );

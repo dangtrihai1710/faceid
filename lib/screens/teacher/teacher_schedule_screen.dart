@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'dart:developer' as developer;
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 
 class TeacherScheduleScreen extends StatefulWidget {
   final User currentUser;
@@ -43,7 +43,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
   }
 
   void _checkAuthentication() {
-    final hasToken = CoreApi.ApiService.hasToken();
+    final hasToken = core_api.ApiService.hasToken();
     developer.log('🔑 Authentication check in schedule screen: ${hasToken ? "Has token" : "No token"}', name: 'TeacherSchedule');
 
     if (!hasToken) {
@@ -80,7 +80,7 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen>
     setState(() => _isLoading = true);
 
     try {
-      final classesData = await CoreApi.ApiService.getTeacherClasses();
+      final classesData = await core_api.ApiService.getTeacherClasses();
 
       if (classesData.isNotEmpty) {
         final classes = classesData.map((json) => ClassModel.fromJson(json)).toList();

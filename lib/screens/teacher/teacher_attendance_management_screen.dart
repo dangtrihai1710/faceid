@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../models/class_model.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 import 'teacher_attendance_code_screen.dart';
 import 'teacher_class_students_screen.dart';
 
@@ -32,7 +32,7 @@ class _TeacherAttendanceManagementScreenState extends State<TeacherAttendanceMan
     setState(() => _isLoading = true);
 
     try {
-      final classesData = await CoreApi.ApiService.getTeacherClasses();
+      final classesData = await core_api.ApiService.getTeacherClasses();
 
       if (classesData.isNotEmpty) {
         final allClasses = classesData.map((json) => ClassModel.fromJson(json)).toList();
@@ -46,8 +46,7 @@ class _TeacherAttendanceManagementScreenState extends State<TeacherAttendanceMan
         // Filter for attendance-relevant classes
         final attendanceClasses = instructorClasses.where((classModel) {
           return classModel.isToday || classModel.isOngoing ||
-                 (classModel.endTime != null &&
-                  DateTime.now().difference(classModel.endTime!).inHours < 2);
+                 (DateTime.now().difference(classModel.endTime).inHours < 2);
         }).toList();
 
         if (mounted) {

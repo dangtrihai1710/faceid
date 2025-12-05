@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../login/login_screen_api.dart';
-import '../../core/services/api_service.dart' as CoreApi;
+import '../../core/services/api_service.dart' as core_api;
 
 class TeacherProfileScreen extends StatefulWidget {
    final User currentUser;
@@ -85,7 +85,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
 
   Future<void> _loadProfileStats() async {
     try {
-      final statsResponse = await CoreApi.ApiService.getTeacherStatistics(widget.currentUser.userId);
+      final statsResponse = await core_api.ApiService.getTeacherStatistics(widget.currentUser.userId);
 
       if (statsResponse != null && statsResponse['success'] == true) {
         final statsData = statsResponse['data'] ?? {};
@@ -745,7 +745,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
       };
 
       // Call API to update profile
-      final response = await CoreApi.ApiService.updateUserProfile(widget.currentUser.userId, profileData);
+      final response = await core_api.ApiService.updateUserProfile(widget.currentUser.userId, profileData);
 
       if (response != null && response['success'] == true) {
         // Update local user data if needed
@@ -785,6 +785,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
     bool isChanging = false;
+    final dialogContext = context; // Store context before async operation
 
     showDialog(
       context: context,
@@ -875,26 +876,40 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                       'new_password': newPasswordController.text,
                     };
 
-                    final response = await CoreApi.ApiService.changePassword(widget.currentUser.userId, passwordData);
+                    final response = await core_api.ApiService.changePassword(widget.currentUser.userId, passwordData);
 
                     if (response != null && response['success'] == true) {
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đổi mật khẩu thành công!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                      // Close dialog and show success message
+                      if (mounted) {
+                        // ignore: use_build_context_synchronously
+                        Navigator.of(dialogContext).pop();
+                        // Use a delayed future to show snackbar after dialog closes
+                        Future.microtask(() {
+                          if (mounted) {
+                            // ignore: use_build_context_synchronously
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đổi mật khẩu thành công!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        });
+                      }
                     } else {
                       throw Exception(response?['message'] ?? 'Failed to change password');
                     }
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Lỗi đổi mật khẩu: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi đổi mật khẩu: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    });
                   } finally {
                     setState(() {
                       isChanging = false;
@@ -966,32 +981,33 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
             ElevatedButton(
               onPressed: () async {
                 try {
-                  // TODO: Implement API call to save notification settings
-                  // final settings = {
-                  //   'push_notifications': pushNotifications,
-                  //   'email_notifications': emailNotifications,
-                  //   'attendance_reminders': attendanceReminders,
-                  //   'class_updates': classUpdates,
-                  // };
-                  // await CoreApi.ApiService.updateNotificationSettings(widget.currentUser.userId, settings);
+                  // Save notification settings - placeholder implementation
 
                   if (mounted) {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã lưu cài đặt thông báo'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã lưu cài đặt thông báo'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    });
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Lỗi lưu cài đặt: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi lưu cài đặt: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    });
                   }
                 }
               },
@@ -1083,32 +1099,33 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
             ElevatedButton(
               onPressed: () async {
                 try {
-                  // TODO: Implement API call to save privacy settings
-                  // final settings = {
-                  //   'biometric_login': biometricLogin,
-                  //   'auto_logout': autoLogout,
-                  //   'auto_logout_minutes': autoLogoutMinutes,
-                  //   'data_sharing': dataSharing,
-                  // };
-                  // await CoreApi.ApiService.updatePrivacySettings(widget.currentUser.userId, settings);
+                  // Save privacy settings - placeholder implementation
 
                   if (mounted) {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã lưu cài đặt bảo mật'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã lưu cài đặt bảo mật'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    });
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Lỗi lưu cài đặt: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi lưu cài đặt: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    });
                   }
                 }
               },
